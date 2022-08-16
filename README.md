@@ -60,3 +60,7 @@ The output is a standard VCF file. It will be placed under WORKDIR/out.pass.vcf.
 The file WORKDIR/out.vcf.gz contains all of the insertions, including those that did not pass the filters. Most of them will be false positives. It is not recommend to you use this file unless 
 for specific situations (e.g., you are looking for something specific).
 
+## Citation
+
+A manuscript on INSurVeyor is currently in preparation.
+
