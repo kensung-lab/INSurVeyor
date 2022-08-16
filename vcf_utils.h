@@ -87,7 +87,7 @@ bcf_hdr_t* generate_vcf_header(chr_seqs_map_t& contigs, std::string sample_name,
 	const char* svinsseq_tag = "##INFO=<ID=SVINSSEQ,Number=1,Type=String,Description=\"Inserted sequence.\">";
 	bcf_hdr_add_hrec(header, bcf_hdr_parse_line(header, svinsseq_tag, &len));
 
-	const char* overlap_tag = "##INFO=<ID=OVERLAP,Number=2,Type=Integer,Description=\"Overlap (in bp) between the left and right contigs.\">";
+	const char* overlap_tag = "##INFO=<ID=OVERLAP,Number=1,Type=Integer,Description=\"Overlap (in bp) between the left and right contigs.\">";
 	bcf_hdr_add_hrec(header, bcf_hdr_parse_line(header, overlap_tag, &len));
 
 	const char* disc_tag = "##INFO=<ID=DISCORDANT,Number=2,Type=Integer,Description=\"Discordant pairs supporting the left and right breakpoints of this insertion.\">";
