@@ -21,6 +21,7 @@ cmake -DCMAKE_BUILD_TYPE=Release . && make
 ```
 
 If htslib does not build correctly, please refer to https://github.com/samtools/htslib
+The building process should not take longer than 1-2 minutes.
 
 Python is necessary to run INSurVeyor. Libraries NumPy (http://www.numpy.org/), PyFaidx (https://github.com/mdshw5/pyfaidx) and PySam (https://github.com/pysam-developers/pysam) are required. If 
 Python 2 is used, numpy 1.16.6, pyfaidx 0.5.9 and pysam 0.16.0.1 are the recommended (i.e., tested) versions. If Python 3 is used, then numpy 1.21.2, pyfaidx 0.5.9.1 and pysam 0.16.0.1 were 
@@ -67,7 +68,7 @@ A demo is provided in the folder *demo*. You can run it with the command
 mkdir workdir
 python surveyor.py demo/reads.bam workdir/ demo/ref.fa
 ```
-If the software ran successfully, a file workdir/out.pass.vcf.gz will be generated. It should contain two insertions and they should look like these:
+The demo should run in less than a minute. If it ran successfully, a file workdir/out.pass.vcf.gz will be generated. It should contain two insertions and they should look like these:
 ```
 ref     170872  T_INS_0 T       <INS>   .       PASS    END=170872;SVTYPE=INS;SVLEN=339;SVINSSEQ=AAGAAGTAGAGGAATGGGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGTGGATCATGAGGTCAGGAGATCGAGACCATCCTGGCTAACAAGGTGAAACCCCGTCTCTACTAAAAATACAAAAAATTAGCCGGGCGCGGTGGCGGGCGCCTGTAGTCCCAGCTACTCGGGAGGCTGAGGCAGGAGAATGGCGTGAACCCGGGAAGCGGAGCTTGCAGTGAGCCGAGATTGCGCCACTGCAGTCCGCAGTCCGGCCTGGGCGACAGAGCGAGACTCCGTCTCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA;SPLIT_READS=10,16;DISCORDANT=30,50;ALGORITHM=transurveyor;LEFT_ANCHOR=170448-170871;RIGHT_ANCHOR=170872-171336;LEFT_ANCHOR_CIGAR=7X417=190S;RIGHT_ANCHOR_CIGAR=149S458=7X;AVG_STABLE_NM=0,0;STABLE_DEPTHS=28,35;SPANNING_READS=0,0;MHLEN=0;SCORES=1,1    GT      1
 ref     714813  A_INS_0 a       <INS>   .       PASS    END=714814;SVTYPE=INS;SVLEN=78;SVINSSEQ=GTATAGTATATACTGTATATACTATATAGTATAGTATATACTGTATATACTATATAGTATAGTATATACTGTATATAC;SPLIT_READS=22,16;DISCORDANT=20,25;ALGORITHM=assembly;LEFT_ANCHOR=714722-714812;RIGHT_ANCHOR=714814-714903;AVG_STABLE_NM=0,0;STABLE_DEPTHS=28,26;SPANNING_READS=27,27      GT      1
