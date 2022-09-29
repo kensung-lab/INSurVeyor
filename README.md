@@ -16,6 +16,7 @@ The following commands should be sufficient:
 
 ```
 git clone https://github.com/kensung-lab/INSurVeyor
+cd INSurVeyor/
 ./build_htslib.sh
 cmake -DCMAKE_BUILD_TYPE=Release . && make
 ```
