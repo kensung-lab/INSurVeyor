@@ -3,7 +3,7 @@ An insertion caller for Illumina paired-end WGS data.
 
 ## Installation
 
-There are two options for obtaining. If singularity is available on your system, you can download the image in Releases. Alternatively, you can compile the code yourself. This should be 
+There are two options for obtaining INSurVeyor. If singularity is available on your system, you can download the image in Releases. Alternatively, you can compile the code yourself. This should be 
 straightforward, but some dependencies must be installed.
 
 ### Singularity
