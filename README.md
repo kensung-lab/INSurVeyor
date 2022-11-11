@@ -12,6 +12,10 @@ The latest image can be obtained under Releases.
 
 ### Compiling the code
 
+In order to compile the code, the following are required:
+- A C and a C++ compiler are required. If the GCC suite is used, version 4.9.3 or above is required.
+- A recent version of CMake (3.5 or above)
+
 The following commands should be sufficient:
 
 ```
