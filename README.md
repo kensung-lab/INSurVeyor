@@ -25,6 +25,12 @@ cd INSurVeyor/
 cmake -DCMAKE_BUILD_TYPE=Release . && make
 ```
 
+It is recommended to build the version of htslib provided with the code by using the provided build_htslib.sh. autoconf (https://www.gnu.org/software/autoconf/) and zlib development files (http://zlib.net) are required. On Ubuntu, they can be installed with
+```
+sudo apt-get install autoconf zlib1g-dev
+```
+If the provided htslib is not built correctly, the building process will search for an installed copy. Version 1.13 or higher is required.
+
 If htslib does not build correctly, please refer to https://github.com/samtools/htslib
 The building process should not take longer than 1-2 minutes.
 
