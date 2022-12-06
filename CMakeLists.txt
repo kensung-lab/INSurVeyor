@@ -4,8 +4,14 @@ project(SurVeyor-INS)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pthread")
 
-include_directories(htslib-1.13/include)
 include_directories(libs)
+
+find_library(HTS_LIB hts PATHS htslib-1.13/lib NO_DEFAULT_PATH)
+include_directories(htslib-1.13/include)
+if (NOT HTS_LIB)
+	message(STATUS "Included htslib was not built. Assuming htslib 1.13 or higher is installed system-wise.")
+	find_library(HTS_LIB hts)
+endif()
 
 add_executable(reads_categorizer reads_categorizer.cpp)
 
@@ -21,7 +27,6 @@ add_executable(filter filter.cpp)
 
 add_executable(normalise normalise.cpp)
 
-find_library(HTS_LIB hts PATHS htslib-1.13/lib NO_DEFAULT_PATH)
 target_link_libraries(reads_categorizer "${HTS_LIB}")
 target_link_libraries(clip_consensus_builder "${HTS_LIB}")
 target_link_libraries(call_insertions "${HTS_LIB}")
