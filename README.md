@@ -29,10 +29,11 @@ It is recommended to build the version of htslib provided with the code by using
 ```
 sudo apt-get install autoconf zlib1g-dev
 ```
+Alternatively, build_htslib_full.sh will build a version of htslib with support for bz2, lzma and curl, but development files for all three must be installed.
+
 If the provided htslib is not built correctly, the building process will search for an installed copy. Version 1.13 or higher is required.
 
-If htslib does not build correctly, please refer to https://github.com/samtools/htslib
-The building process should not take longer than 1-2 minutes.
+For further information on htslib, please refer to https://github.com/samtools/htslib
 
 Python is necessary to run INSurVeyor. Libraries NumPy (http://www.numpy.org/), PyFaidx (https://github.com/mdshw5/pyfaidx) and PySam (https://github.com/pysam-developers/pysam) are required. If 
 Python 2 is used, numpy 1.16.6, pyfaidx 0.5.9 and pysam 0.16.0.1 are the recommended (i.e., tested) versions. If Python 3 is used, then numpy 1.21.2, pyfaidx 0.5.9.1 and pysam 0.16.0.1 were 
