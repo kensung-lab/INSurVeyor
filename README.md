@@ -86,6 +86,26 @@ ref     170872  T_INS_0 T       <INS>   .       PASS    END=170872;SVTYPE=INS;SV
 ref     714813  A_INS_0 a       <INS>   .       PASS    END=714814;SVTYPE=INS;SVLEN=78;SVINSSEQ=GTATAGTATATACTGTATATACTATATAGTATAGTATATACTGTATATACTATATAGTATAGTATATACTGTATATAC;SPLIT_READS=22,16;DISCORDANT=20,25;ALGORITHM=assembly;LEFT_ANCHOR=714722-714812;RIGHT_ANCHOR=714814-714903;AVG_STABLE_NM=0,0;STABLE_DEPTHS=28,26;SPANNING_READS=27,27      GT      1
 ```
 
+## Complete SV callset
+
+In many cases the user will need a complete set of SVs (i.e., deletions, tandem duplications, inversions, etc.). In this case, we currently recommend to use Manta (https://github.com/Illumina/manta) as a SV caller, and to replace the insertions provided by Manta with the insertions provided by INSurVeyor.
+This is simple and can be done with bcftools. Note that the output of Manta and INSurVeyor must have the same sample; if not, you can use bcftools reheader.
+
+```
+bcftools view manta.vcf.gz -i "SVTYPE!='INS'" -O z -o manta.noINS.vcf.gz
+tabix -p vcf manta.noINS.vcf.gz
+tabix -p vcf surveyor.vcf.gz
+bcftools concat -a manta.noINS.vcf.gz surveyor.vcf.gz -O z -o merged.vcf.gz
+```
+
+Alternatively, if the user prefers a slightly more complete set of insertions, and does not mind having duplicated insertions, they can retain Manta insertions when merging.
+
+```
+tabix -p vcf manta.vcf.gz
+tabix -p vcf surveyor.vcf.gz
+bcftools concat -a manta.vcf.gz surveyor.vcf.gz -O z -o merged.vcf.gz
+```
+
 ## Citation
 
 A manuscript on INSurVeyor is currently in preparation.
