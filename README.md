@@ -73,6 +73,10 @@ The output is a standard VCF file. It will be placed under WORKDIR/out.pass.vcf.
 The file WORKDIR/out.vcf.gz contains all of the insertions, including those that did not pass the filters. Most of them will be false positives. It is not recommend to you use this file unless 
 for specific situations (e.g., you are looking for something specific).
 
+### Incomplete long novel insertions
+
+For long insertions (in theory longer than twice the maximum valid insert size, in practice it depends on the quality of the library), INSurVeyor may not be able to assemble the whole sequence. In this case, the insertion will contain an INFO/INCOMPLETE_ASSEMBLY flag, and SVINSSEQ will contain a prefix and a suffix of the insertion, joined by a dash "-".
+
 ## Demo
 
 A demo is provided in the folder *demo*. You can run it with the command
