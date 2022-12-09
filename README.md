@@ -110,6 +110,11 @@ tabix -p vcf surveyor.vcf.gz
 bcftools concat -a manta.vcf.gz surveyor.vcf.gz -O z -o merged.vcf.gz
 ```
 
+## Clustering insertions from different samples
+
+When analysing populations, it is often useful to obtain a multi-sample VCF that merges/clusters SVs from different samples. In order to achieve this, you can use https://github.com/Mesh89/SurVClusterer
+Other alternatives include https://github.com/DecodeGenetics/svimmer and https://github.com/mkirsche/Jasmine , although we have not personally tested them.
+
 ## Citation
 
 A manuscript on INSurVeyor is currently in preparation.
