@@ -685,7 +685,7 @@ insertion_t* assemble_insertion(int ins_id, std::string& contig_name, chr_seqs_m
 
 	std::vector<std::string> assembled_sequences = assemble_sequences(ins_id, contig_name, r_cluster, l_cluster, mateseqs, harsh_aligner);
 
-	std::string ins_full_id = "A_INS_" + std::to_string(ins_id);
+	std::string ins_full_id = "NO_ID";
 	if (assembled_sequences.empty()) {
 		failed_assembly_mtx.lock();
 		assembly_failed_no_seq << ins_full_id << " " << contig_name << " " << r_cluster->end() << " + ";
@@ -744,7 +744,7 @@ insertion_t* assemble_insertion(int ins_id, std::string& contig_name, chr_seqs_m
 	std::string ins_seq_w_mh = mh_seq + ins_seq;
 
 	insertion_t* ins = new insertion_t(contig_name, ins_start, ins_end, 0, 0, 0, 0, 0, ins_seq_w_mh);
-	ins->id = ins_full_id;
+//	ins->id = ins_full_id;
 
 	if (!good_left_anchor || !good_right_anchor) {
 		assembly_failed_bad_anchors_writer << ins->id << " " << contig_name << " " << r_cluster->end() << " + ";

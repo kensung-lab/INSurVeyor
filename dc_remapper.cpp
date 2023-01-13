@@ -7,6 +7,7 @@
 #include <queue>
 #include <unistd.h>
 #include <climits>
+#include <random>
 #include <cassert>
 
 #include <htslib/sam.h>
@@ -69,7 +70,10 @@ struct region_t {
             : contig_id(contig_id), original_bam_id(original_bam_id), start(start), end(end) {}
 };
 bool operator > (const region_t& r1, const region_t& r2) {
-    return r1.score.total_score > r2.score.total_score;
+	if (r1.score.total_score != r2.score.total_score) {
+		return r1.score.total_score > r2.score.total_score;
+	}
+	return r1.end-r1.start < r2.end-r2.start;
 }
 
 struct cc_v_distance_t {
@@ -480,12 +484,10 @@ void compute_score(region_t& region, reads_cluster_t* r_cluster, reads_cluster_t
     }
 }
 
-std::atomic<int> loc_pred_id;
-
-reads_cluster_t* subsample_cluster(reads_cluster_t* reads_cluster, int size) {
+reads_cluster_t* subsample_cluster(reads_cluster_t* reads_cluster, int size, std::default_random_engine& rng) {
     std::vector<bam1_t*> subset(reads_cluster->reads);
     if (subset.size() > size) {
-        std::random_shuffle(subset.begin(), subset.end());
+        std::shuffle(subset.begin(), subset.end(), rng);
         subset.erase(subset.begin() + size, subset.end());
     }
     reads_cluster_t* subsampled_cluster = new reads_cluster_t();
@@ -656,8 +658,9 @@ void remap_cluster(reads_cluster_t* r_cluster, reads_cluster_t* l_cluster, std::
 
     // if too many regions and too many reads, subsample
     if (full_cluster.size() > 2*SMALL_SAMPLE_SIZE && regions.size() > CLUSTER_CANDIDATES) {
-        reads_cluster_t* subsampled_lc = subsample_cluster(l_cluster, SMALL_SAMPLE_SIZE);
-        reads_cluster_t* subsampled_rc = subsample_cluster(r_cluster, SMALL_SAMPLE_SIZE);
+    	std::default_random_engine rng(config.seed);
+        reads_cluster_t* subsampled_lc = subsample_cluster(l_cluster, SMALL_SAMPLE_SIZE, rng);
+        reads_cluster_t* subsampled_rc = subsample_cluster(r_cluster, SMALL_SAMPLE_SIZE, rng);
 
         // compute best score
         for (int i = 0; i < regions.size(); i++) {
@@ -832,7 +835,6 @@ void remap_cluster(reads_cluster_t* r_cluster, reads_cluster_t* l_cluster, std::
         neg_cluster->add_clip_cluster(cc);
     }
 
-    int pred_id = loc_pred_id++;
     if (!pos_cluster->empty() && !neg_cluster->empty()) {
     	// realign corrected consensus to find insertion
 		std::string full_assembled_seq, ins_seq;
@@ -849,7 +851,6 @@ void remap_cluster(reads_cluster_t* r_cluster, reads_cluster_t* l_cluster, std::
 
 				insertion_t* insertion = new insertion_t(contig_name, remap_start + p.first.ref_end, remap_start + p.second.ref_begin-1,
 						pos_cluster->reads.size(), neg_cluster->reads.size(), rc_reads, lc_reads, 0, ins_seq);
-				insertion->id = "T_INS_" + std::to_string(pred_id);
 				insertion->left_anchor = std::to_string(remap_start + p.first.ref_begin) + "-" + std::to_string(remap_start + p.first.ref_end);
 				insertion->right_anchor = std::to_string(remap_start + p.second.ref_begin) + "-" + std::to_string(remap_start + p.second.ref_end);
 				insertion->left_bp_precise = left_bp_precise, insertion->right_bp_precise = right_bp_precise;
@@ -874,12 +875,6 @@ void remap_cluster(reads_cluster_t* r_cluster, reads_cluster_t* l_cluster, std::
     delete neg_cluster;
 
     std::sort(kept.begin(), kept.end(), [] (bam1_t* r1, bam1_t* r2) {return get_endpoint(r1) < get_endpoint(r2);});
-
-//    mtx.lock();
-//    consensus_flog << "T_INS_" << pred_id << std::endl;
-//    consensus_flog << consensus_log << std::endl;
-//    consensus_flog << std::endl;
-//    mtx.unlock();
 }
 
 int find(int* parents, int i) {
@@ -1202,10 +1197,8 @@ void remap(int id, int contig_id) {
 
         // remap clusters
         std::vector<bam1_t*> to_write;
-//        if (c1->start() == 125028399) {
-			remap_cluster(c1, c2, to_write, contig_id, r_dc_file->header, mateseqs, matequals, aligner, permissive_aligner,
-					aligner_to_base, harsh_aligner);
-//        }
+		remap_cluster(c1, c2, to_write, contig_id, r_dc_file->header, mateseqs, matequals, aligner, permissive_aligner,
+				aligner_to_base, harsh_aligner);
 
         for (bam1_t* r : to_write) {
             if (bam_is_rev(r)) {
@@ -1264,7 +1257,6 @@ int main(int argc, char* argv[]) {
     for (size_t contig_id = 0; contig_id < contig_map.size(); contig_id++) {
         std::future<void> future = thread_pool.push(remap, contig_id);
         futures.push_back(std::move(future));
-//        break;
     }
     thread_pool.stop(true);
     for (int i = 0; i < futures.size(); i++) {
@@ -1285,15 +1277,19 @@ int main(int argc, char* argv[]) {
 	std::sort(assembled_insertions.begin(), assembled_insertions.end(), [&out_vcf_header](const insertion_t* i1, const insertion_t* i2) {
 		int contig_id1 = bcf_hdr_name2id(out_vcf_header, i1->chr.c_str());
 		int contig_id2 = bcf_hdr_name2id(out_vcf_header, i2->chr.c_str());
-		if (contig_id1 != contig_id2) {
-			return contig_id1 < contig_id2;
-		}
-		return i1->start < i2->start;
+		int disc_score1 = -(i1->r_disc_pairs*i1->l_disc_pairs), disc_score2 = -(i2->r_disc_pairs*i2->l_disc_pairs);
+		// negative because we want descending order
+		int disc_score_mul1 = -(i1->r_disc_pairs*i1->l_disc_pairs), disc_score_mul2 = -(i2->r_disc_pairs*i2->l_disc_pairs);
+		int disc_score_sum1 = -(i1->r_disc_pairs+i1->l_disc_pairs), disc_score_sum2 = -(i2->r_disc_pairs+i2->l_disc_pairs);
+		return std::tie(contig_id1, i1->start, i1->end, i1->ins_seq, disc_score_mul1, disc_score_sum1) <
+			   std::tie(contig_id2, i2->start, i2->end, i2->ins_seq, disc_score_mul2, disc_score_sum2);
 	});
 
 	bcf1_t* bcf_entry = bcf_init();
+	int a_id = 0;
 	for (insertion_t* insertion : assembled_insertions) {
-		insertion_to_bcf_entry(insertion, out_vcf_header, bcf_entry, insertion->id, contigs);
+		std::string id = "A_INS_" + std::to_string(a_id++);
+		insertion_to_bcf_entry(insertion, out_vcf_header, bcf_entry, id, contigs);
 
 		int int2_conv[2];
 		int2_conv[0] = insertion->r_disc_pairs, int2_conv[1] = insertion->l_disc_pairs;
@@ -1323,14 +1319,17 @@ int main(int argc, char* argv[]) {
 	std::sort(trans_insertions.begin(), trans_insertions.end(), [&out_vcf_header](const insertion_t* i1, const insertion_t* i2) {
 		int contig_id1 = bcf_hdr_name2id(out_vcf_header, i1->chr.c_str());
 		int contig_id2 = bcf_hdr_name2id(out_vcf_header, i2->chr.c_str());
-		if (contig_id1 != contig_id2) {
-			return contig_id1 < contig_id2;
-		}
-		return i1->start < i2->start;
+		// negative because we want descending order
+		int disc_score_mul1 = -(i1->r_disc_pairs*i1->l_disc_pairs), disc_score_mul2 = -(i2->r_disc_pairs*i2->l_disc_pairs);
+		int disc_score_sum1 = -(i1->r_disc_pairs+i1->l_disc_pairs), disc_score_sum2 = -(i2->r_disc_pairs+i2->l_disc_pairs);
+		return std::tie(contig_id1, i1->start, i1->end, i1->ins_seq, disc_score_mul1, disc_score_sum1) <
+			   std::tie(contig_id2, i2->start, i2->end, i2->ins_seq, disc_score_mul2, disc_score_sum2);
 	});
 
+	int t_id = 0;
 	for (insertion_t* insertion : trans_insertions) {
-		insertion_to_bcf_entry(insertion, out_vcf_header, bcf_entry, insertion->id, contigs);
+		std::string id = "T_INS_" + std::to_string(t_id++);
+		insertion_to_bcf_entry(insertion, out_vcf_header, bcf_entry, id, contigs);
 
 		int int2_conv[2];
 		int2_conv[0] = insertion->r_disc_pairs, int2_conv[1] = insertion->l_disc_pairs;

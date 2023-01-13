@@ -15,6 +15,7 @@ cmd_parser.add_argument('bam_file', help='Input bam file.')
 cmd_parser.add_argument('workdir', help='Working directory for Surveyor to use.')
 cmd_parser.add_argument('reference', help='Reference genome in FASTA format.')
 cmd_parser.add_argument('--threads', type=int, default=1, help='Number of threads to be used.')
+cmd_parser.add_argument('--seed', type=int, default=0, help='Seed for random sampling of genomic positions.')
 cmd_parser.add_argument('--max_clipped_pos_dist', type=int, default=5, help='Max distance (in bp) for two clips to be considered '
                                                                    'representing the same breakpoint.')
 cmd_parser.add_argument('--min_insertion_size', type=int, default=50, help='Minimum size of the insertion to be called.'
@@ -40,6 +41,7 @@ SURV_PATH = os.path.dirname(os.path.realpath(__file__))
 # Create config file in workdir
 config_file = open(cmd_args.workdir + "/config.txt", "w")
 config_file.write("threads %d\n" % cmd_args.threads)
+config_file.write("seed %d\n" % cmd_args.seed)
 config_file.write("max_clipped_pos_dist %d\n" % cmd_args.max_clipped_pos_dist)
 config_file.write("min_insertion_size %d\n" % cmd_args.min_insertion_size)
 config_file.write("max_insertion_size %d\n" % cmd_args.max_insertion_size)
@@ -63,7 +65,7 @@ contig_map.close();
 
 # Generate general distribution of insert sizes
 reference_fa = pyfaidx.Fasta(cmd_args.reference)
-rand_pos_gen = RandomPositionGenerator(reference_fa, cmd_args.sampling_regions)
+rand_pos_gen = RandomPositionGenerator(reference_fa, cmd_args.seed, cmd_args.sampling_regions)
 random_positions = []
 for i in range(1,1000001):
     if i % 100000 == 0: print(i, "random positions generated.")
@@ -132,11 +134,6 @@ print("Executing:", read_categorizer_cmd)
 os.system(read_categorizer_cmd)
 end = time.time()
 print("Reads categorized in %d [s]" % (end-start))
-
-# for f in glob.glob(workspace + "/clipped/*.bam"):
-#     prefix = f[:-4]
-#     pysam.sort("-@", str(cmd_args.threads), "-o", "%s.cs.bam" % prefix, f)
-#     os.rename("%s.cs.bam" % prefix, f)
 
 start = time.time()
 clip_consensus_builder_cmd = SURV_PATH + "/clip_consensus_builder %s" % (cmd_args.workdir)

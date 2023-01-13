@@ -14,7 +14,7 @@
 KSEQ_INIT(int, read)
 
 struct config_t {
-    int threads;
+    int threads, seed;
     int min_insertion_size, max_insertion_size;
     int max_clipped_pos_dist, min_clip_len, min_stable_mapq;
     double max_seq_error;
@@ -34,6 +34,8 @@ struct config_t {
         fin.close();
 
         threads = stoi(config_params["threads"]);
+        seed = stoi(config_params["seed"]);
+
         min_insertion_size = stoi(config_params["min_insertion_size"]);
         max_insertion_size = stoi(config_params["max_insertion_size"]);
         max_clipped_pos_dist = stoi(config_params["max_clipped_pos_dist"]);
@@ -211,7 +213,9 @@ struct insertion_t {
     chr(chr), start(start), end(end), r_disc_pairs(r_disc_pairs), l_disc_pairs(l_disc_pairs), rc_reads(rc_reads), lc_reads(lc_reads),
 	overlap(overlap), ins_seq(ins_seq) {}
 };
-
+std::string unique_key(insertion_t* ins) {
+	return ins->chr + ":" + std::to_string(ins->start) + ":" + std::to_string(ins->end) + ":" + ins->ins_seq;
+}
 
 int score(char a, char b, int match_score, int mismatch_penalty) {
 	return (toupper(a) == toupper(b) || a == 'N' || b == 'N') ? match_score : mismatch_penalty;

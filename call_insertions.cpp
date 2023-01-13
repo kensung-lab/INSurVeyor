@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <algorithm>
+#include <unordered_set>
 
 #include "libs/ssw_cpp.h"
 #include "vcf_utils.h"
@@ -153,17 +154,22 @@ int main(int argc, char* argv[]) {
 	std::sort(insertions.begin(), insertions.end(), [&out_vcf_header](const insertion_t* i1, const insertion_t* i2) {
 		int contig_id1 = bcf_hdr_name2id(out_vcf_header, i1->chr.c_str());
 		int contig_id2 = bcf_hdr_name2id(out_vcf_header, i2->chr.c_str());
-		if (contig_id1 != contig_id2) {
-			return contig_id1 < contig_id2;
-		}
-		return i1->start < i2->start;
+		// negative because we want descending order
+		int sc_score1 = -(i1->rc_reads*i1->lc_reads), sc_score2 = -(i2->rc_reads*i2->lc_reads);
+		int overlap1 = -i1->overlap, overlap2 = -i2->overlap;
+		return std::tie(contig_id1, i1->start, i1->end, i1->ins_seq, sc_score2, overlap1) <
+			   std::tie(contig_id2, i2->start, i2->end, i2->ins_seq, sc_score1, overlap2);
 	});
 
     int int_id = 0;
     bcf1_t* bcf_entry = bcf_init();
+    std::unordered_set<std::string> used_keys;
     for (insertion_t* insertion : insertions) {
-    	std::string id = "S_INS_" + std::to_string(int_id);
+    	std::string key = unique_key(insertion);
+    	if (used_keys.count(key)) continue;
+    	used_keys.insert(key);
 
+    	std::string id = "S_INS_" + std::to_string(int_id);
 		insertion_to_bcf_entry(insertion, out_vcf_header, bcf_entry, id, contigs);
 
 		bcf_update_info_int32(out_vcf_header, bcf_entry, "OVERLAP", &insertion->overlap, 1);
