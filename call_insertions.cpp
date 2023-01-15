@@ -118,6 +118,11 @@ int main(int argc, char* argv[]) {
     std::string reference_fname = argv[2];
     std::string sample_name = argv[3];
 
+    std::string full_cmd_fname = workdir + "/full_cmd.txt";
+	std::ifstream full_cmd_fin(full_cmd_fname);
+	std::string full_cmd_str;
+	std::getline(full_cmd_fin, full_cmd_str);
+
     contigs.read_fasta_into_map(reference_fname);
 
     contig_map_t contig_map;
@@ -146,7 +151,7 @@ int main(int argc, char* argv[]) {
 		throw std::runtime_error("Unable to open file " + out_vcf_fname + ".");
 	}
 
-	bcf_hdr_t* out_vcf_header = generate_vcf_header(contigs, sample_name, config.min_insertion_size);
+	bcf_hdr_t* out_vcf_header = generate_vcf_header(contigs, sample_name, config.min_insertion_size, full_cmd_str, config.version);
 	if (bcf_hdr_write(out_vcf_file, out_vcf_header) != 0) {
 		throw std::runtime_error("Failed to write the VCF header to " + out_vcf_fname + ".");
 	}

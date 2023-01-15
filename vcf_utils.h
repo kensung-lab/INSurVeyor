@@ -1,6 +1,9 @@
 #ifndef VCF_UTILS_H_
 #define VCF_UTILS_H_
 
+#include <ctime>
+#include <chrono>
+
 #include "htslib/vcf.h"
 #include "utils.h"
 
@@ -18,7 +21,7 @@ bcf_hrec_t* generate_contig_hrec() {
 	}
 	return contig_hrec;
 }
-bcf_hdr_t* generate_vcf_header(chr_seqs_map_t& contigs, std::string sample_name, int min_ins_size) {
+bcf_hdr_t* generate_vcf_header(chr_seqs_map_t& contigs, std::string sample_name, int min_ins_size, std::string command, std::string version) {
 	bcf_hdr_t* header = bcf_hdr_init("w");
 
 	// add contigs
@@ -146,6 +149,14 @@ bcf_hdr_t* generate_vcf_header(chr_seqs_map_t& contigs, std::string sample_name,
 	// add ALT
 	const char* ins_alt_tag = "##ALT=<ID=INS,Description=\"Insertion\">";
 	bcf_hdr_add_hrec(header, bcf_hdr_parse_line(header, ins_alt_tag, &len));
+
+	std::string cmd_tag = "##INSurVeyorCommand=" + command;
+	bcf_hdr_add_hrec(header, bcf_hdr_parse_line(header, cmd_tag.c_str(), &len));
+
+	auto now = std::chrono::system_clock::now();
+	std::time_t now_time = std::chrono::system_clock::to_time_t(now);
+	std::string version_tag = "##INSurVeyorVersion=" + version + "; Date=" + std::ctime(&now_time);
+	bcf_hdr_add_hrec(header, bcf_hdr_parse_line(header, version_tag.c_str(), &len));
 
 	// add samples
 	bcf_hdr_add_sample(header, sample_name.c_str());

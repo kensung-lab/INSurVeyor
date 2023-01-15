@@ -18,6 +18,7 @@ struct config_t {
     int min_insertion_size, max_insertion_size;
     int max_clipped_pos_dist, min_clip_len, min_stable_mapq;
     double max_seq_error;
+    std::string version;
 
     int clip_penalty = 7;
     int max_mh_len = 100;
@@ -45,6 +46,8 @@ struct config_t {
 
         max_is = stoi(config_params["max_is"]);
         read_len = stoi(config_params["read_len"]);
+
+        version = config_params["version"];
     };
 };
 

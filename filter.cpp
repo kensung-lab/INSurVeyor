@@ -132,7 +132,7 @@ int main(int argc, char* argv[]) {
 		throw std::runtime_error("Unable to open file " + transurveyor_ins_vcf_fname + ".");
 	}
 	bcf_hdr_t* transurveyor_ins_hdr = bcf_hdr_read(transurveyor_ins_vcf_file);
-	bcf_hdr_t* out_vcf_header = transurveyor_ins_hdr; //bcf_hdr_read(transurveyor_ins_vcf_file);
+	bcf_hdr_t* out_vcf_header = bcf_hdr_dup(transurveyor_ins_hdr);
 	bcf1_t* bcf_entry = bcf_init();
 	while (bcf_read(transurveyor_ins_vcf_file, transurveyor_ins_hdr, bcf_entry) == 0) {
 		std::string contig_name = bcf_seqname_safe(transurveyor_ins_hdr, bcf_entry);
@@ -278,7 +278,6 @@ int main(int argc, char* argv[]) {
 			}
 		}
 		if (write) {
-//			final_insertions_by_contig[contig_name].push_back(insertion);
 			final_insertions_set.push_back(bcf_dup(bcf_entry));
 		}
 	}

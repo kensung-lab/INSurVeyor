@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from __future__ import print_function
-import argparse, os, glob, time
+import argparse, os, time, sys
 import pysam, pyfaidx
 from random_pos_generator import RandomPositionGenerator
 import numpy as np
@@ -10,7 +10,9 @@ MAX_READS = 1000
 GEN_DIST_SIZE = 100000
 MAX_ACCEPTABLE_IS = 20000
 
-cmd_parser = argparse.ArgumentParser(description='INSurVeyor, an insertion caller.')
+VERSION = "1.0.2"
+
+cmd_parser = argparse.ArgumentParser(description='INSurVeyor, an insertion caller [%s].' % VERSION)
 cmd_parser.add_argument('bam_file', help='Input bam file.')
 cmd_parser.add_argument('workdir', help='Working directory for Surveyor to use.')
 cmd_parser.add_argument('reference', help='Reference genome in FASTA format.')
@@ -34,9 +36,13 @@ cmd_parser.add_argument('--samplename', default='', help='Name of the sample to 
 cmd_parser.add_argument('--sample-clipped-pairs', action='store_true', help='When estimating the insert size distribution '
                                                                             'by sampling pairs, do not discard pairs where '
                                                                             'one or both of the reads are clipped.')
+cmd_parser.add_argument('--version', action='version', version="INSurVeyor v%s" % VERSION, help='Print version number.')
 cmd_args = cmd_parser.parse_args()
 
 SURV_PATH = os.path.dirname(os.path.realpath(__file__))
+
+with open(cmd_args.workdir + "/full_cmd.txt", "w") as full_cmd_out:
+    print(" ".join(sys.argv[:]), file=full_cmd_out)
 
 # Create config file in workdir
 config_file = open(cmd_args.workdir + "/config.txt", "w")
@@ -48,6 +54,7 @@ config_file.write("max_insertion_size %d\n" % cmd_args.max_insertion_size)
 config_file.write("min_stable_mapq %d\n" % cmd_args.min_stable_mapq)
 config_file.write("min_clip_len %d\n" % cmd_args.min_clip_len)
 config_file.write("max_seq_error %f\n" % cmd_args.max_seq_error)
+config_file.write("version %s\n" % VERSION)
 
 # Find read length
 read_len = 0
