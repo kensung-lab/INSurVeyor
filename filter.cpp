@@ -183,7 +183,9 @@ int main(int argc, char* argv[]) {
 		std::string ins_seq_w_mh = mh_seq + get_ins_seq(bcf_entry, transurveyor_ins_hdr);
 		insertion->ins_seq = ins_seq_w_mh;
 		bcf_update_info_string(out_vcf_header, bcf_entry, "SVINSSEQ", ins_seq_w_mh.c_str());
-		int int_conv = insertion->ins_seq.length();
+		int int_conv = ins_seq_w_mh.length();
+		bcf_update_info_int32(out_vcf_header, bcf_entry, "SVINSLEN", &int_conv, 1);
+		int_conv = insertion->ins_seq.length() - (insertion->end-insertion->start);
 		bcf_update_info_int32(out_vcf_header, bcf_entry, "SVLEN", &int_conv, 1);
 		bcf_update_info_int32(out_vcf_header, bcf_entry, "MHLEN", &insertion->mh_len, 1);
 

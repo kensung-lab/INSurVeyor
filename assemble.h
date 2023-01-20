@@ -668,12 +668,6 @@ std::vector<std::string> assemble_sequences(int ins_id, std::string contig_name,
 	std::vector<std::string> assembled_sequences = assemble_reads(left_stable_read_seqs, unstable_read_seqs, right_stable_read_seqs,
 			harsh_aligner, config, ss_graph);
 
-//	std::string ins_full_id = "A_INS_" + std::to_string(ins_id);
-//	graph_mtx.lock();
-//	graph_writer << ins_full_id << std::endl;
-//	graph_writer << ss_graph.str() << std::endl;
-//	graph_mtx.unlock();
-
 	return assembled_sequences;
 }
 

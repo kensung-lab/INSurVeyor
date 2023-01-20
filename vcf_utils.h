@@ -87,6 +87,9 @@ bcf_hdr_t* generate_vcf_header(chr_seqs_map_t& contigs, std::string sample_name,
 	const char* svlen_tag = "##INFO=<ID=SVLEN,Number=1,Type=Integer,Description=\"Difference in length between REF and ALT alleles.\">";
 	bcf_hdr_add_hrec(header, bcf_hdr_parse_line(header, svlen_tag, &len));
 
+	const char* svinslen_tag = "##INFO=<ID=SVINSLEN,Number=1,Type=Integer,Description=\"Length of the inserted sequence.\">";
+	bcf_hdr_add_hrec(header, bcf_hdr_parse_line(header, svinslen_tag, &len));
+
 	const char* svinsseq_tag = "##INFO=<ID=SVINSSEQ,Number=1,Type=String,Description=\"Inserted sequence.\">";
 	bcf_hdr_add_hrec(header, bcf_hdr_parse_line(header, svinsseq_tag, &len));
 
@@ -234,6 +237,8 @@ void insertion_to_bcf_entry(insertion_t* insertion, bcf_hdr_t* hdr, bcf1_t* bcf_
 	bcf_update_info_string(hdr, bcf_entry, "SVTYPE", "INS");
 	if (insertion->ins_seq.find("-") == std::string::npos) {
 		int_conv = insertion->ins_seq.length();
+		bcf_update_info_int32(hdr, bcf_entry, "SVINSLEN", &int_conv, 1);
+		int_conv = insertion->ins_seq.length() - (insertion->end-insertion->start);
 		bcf_update_info_int32(hdr, bcf_entry, "SVLEN", &int_conv, 1);
 	} else {
 		bcf_update_info_flag(hdr, bcf_entry, "INCOMPLETE_ASSEMBLY", "", 1);
