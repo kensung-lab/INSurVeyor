@@ -2,6 +2,8 @@ import random
 
 class RandomPositionGenerator:
 
+    NO_SAMPLING_PADDING = 1000
+
     def __init__(self, reference_fa, seed, sampling_regions_fname = None):
         random.seed(seed)
 
@@ -11,12 +13,12 @@ class RandomPositionGenerator:
                 for line in sr_inf:
                     sl = line.split()
                     if len(sl) == 1:
-                        chr, start, end = sl[0], 1, len(reference_fa[sl[0]])
+                        chr, start, end = sl[0], self.NO_SAMPLING_PADDING, len(reference_fa[sl[0]])-self.NO_SAMPLING_PADDING
                     else:
                         chr, start, end = sl[0], int(sl[1]), int(sl[2])
                     sampling_regions += [(chr, start, end)]
         else:
-            sampling_regions = [(k, 1, len(reference_fa[k])) for k in reference_fa.keys()]
+            sampling_regions = [(k, self.NO_SAMPLING_PADDING, len(reference_fa[k])-self.NO_SAMPLING_PADDING) for k in reference_fa.keys()]
 
         self.sampling_regions = sampling_regions
         self.reference_len = sum([r[2]-r[1] for r in sampling_regions])

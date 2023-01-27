@@ -53,12 +53,13 @@ bool compatible(insertion_t* i1, insertion_t* i2, int max_dist) {
 void add_AST_filters(insertion_t* insertion, std::vector<std::string>& filters) {
 	if (insertion->ins_seq.length()-(insertion->end-insertion->start) < config.min_insertion_size) filters.push_back("SMALL");
 	if (insertion->end-insertion->start >= (int) insertion->ins_seq.length()) filters.push_back("ALT_SHORTER_THAN_REF");
-	if (insertion->median_lf_cov > stats.max_depth || insertion->median_rf_cov > stats.max_depth ||
-		insertion->median_lf_cov < stats.min_depth || insertion->median_rf_cov < stats.min_depth) filters.push_back("ANOMALOUS_DEPTH");
+	if (insertion->median_lf_cov > stats.get_max_depth(insertion->chr) || insertion->median_rf_cov > stats.get_max_depth(insertion->chr) ||
+		insertion->median_lf_cov < stats.get_min_depth(insertion->chr) || insertion->median_rf_cov < stats.get_min_depth(insertion->chr))
+		filters.push_back("ANOMALOUS_DEPTH");
 	int d = insertion->ins_seq.find("-");
 	if (is_homopolymer(insertion->ins_seq.substr(0, d))) filters.push_back("HOMOPOLYMER_INSSEQ");
 	else if (d != std::string::npos && is_homopolymer(insertion->ins_seq.substr(d+1))) filters.push_back("HOMOPOLYMER_INSSEQ");
-	if (insertion->rc_reads > stats.max_depth || insertion->lc_reads > stats.max_depth) filters.push_back("ANOMALOUS_SC_NUMBER");
+	if (insertion->rc_reads > stats.get_max_depth() || insertion->lc_reads > stats.get_max_depth()) filters.push_back("ANOMALOUS_SC_NUMBER");
 }
 
 std::vector<std::string> get_small_insertions_filterlist(insertion_t* insertion) {
@@ -71,7 +72,8 @@ std::vector<std::string> get_small_insertions_filterlist(insertion_t* insertion)
 void add_AT_filters(insertion_t* insertion, std::vector<std::string>& filters) {
 	auto supports = support(insertion);
 	if (insertion->l_disc_pairs + insertion->r_disc_pairs == 0) filters.push_back("NO_DISC_SUPPORT");
-	else if (supports.first < stats.median_depth/5 && supports.second < stats.median_depth/5) filters.push_back("LOW_SUPPORT");
+	else if (supports.first < stats.get_median_depth(insertion->chr)/5 && supports.second < stats.get_median_depth(insertion->chr)/5)
+		filters.push_back("LOW_SUPPORT");
 }
 
 std::vector<std::string> get_transurveyor_insertions_filterlist(insertion_t* insertion) {
@@ -109,7 +111,7 @@ int main(int argc, char* argv[]) {
     min_ptn_ratio = std::stod(argv[3]);
 
     config.parse(workdir + "/config.txt");
-	stats.parse_stats(workdir + "/stats.txt");
+	stats.parse_stats(workdir + "/stats.txt", config.per_contig_stats);
 
     contig_map.parse(workdir);
 

@@ -30,6 +30,8 @@ cmd_parser.add_argument('--min_clip_len', type=int, default=15, help='Minimum cl
 cmd_parser.add_argument('--max_seq_error', type=float, default=0.04, help='Max sequencing error admissible on the platform used.')
 cmd_parser.add_argument('--sampling-regions', help='File in BED format containing a list of regions to be used to estimate'
                                                    'statistics such as depth.')
+cmd_parser.add_argument('--per-contig-stats', action='store_true',
+                        help='Statistics are computed separately for each contig (experimental).')
 cmd_parser.add_argument('--samplename', default='', help='Name of the sample to be used in the VCF output.'
                                                                  'If not provided, the basename of the bam/cram file will be used,'
                                                                  'up until the first \'.\'')
@@ -54,6 +56,7 @@ config_file.write("max_insertion_size %d\n" % cmd_args.max_insertion_size)
 config_file.write("min_stable_mapq %d\n" % cmd_args.min_stable_mapq)
 config_file.write("min_clip_len %d\n" % cmd_args.min_clip_len)
 config_file.write("max_seq_error %f\n" % cmd_args.max_seq_error)
+config_file.write("per_contig_stats %d\n" % cmd_args.per_contig_stats)
 config_file.write("version %s\n" % VERSION)
 
 # Find read length
@@ -74,7 +77,8 @@ contig_map.close();
 reference_fa = pyfaidx.Fasta(cmd_args.reference)
 rand_pos_gen = RandomPositionGenerator(reference_fa, cmd_args.seed, cmd_args.sampling_regions)
 random_positions = []
-for i in range(1,1000001):
+n_rand_pos = int(rand_pos_gen.reference_len/1000)
+for i in range(1,n_rand_pos):
     if i % 100000 == 0: print(i, "random positions generated.")
     random_positions.append(rand_pos_gen.next())
 

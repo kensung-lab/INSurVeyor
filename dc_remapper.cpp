@@ -750,7 +750,7 @@ void remap_cluster(reads_cluster_t* r_cluster, reads_cluster_t* l_cluster, std::
 		std::string padded_mate_seq = std::string(config.clip_penalty, 'N') + mate_seq + std::string(config.clip_penalty, 'N');
 		harsh_aligner.Align(padded_mate_seq.c_str(), corrected_consensus_sequence.c_str(), corrected_consensus_sequence.length(), filter, &aln, 0);
 		std::string log;
-		rc_remap_infos[i].accepted = accept(aln, log, config.max_seq_error, mate_qual, stats.min_avg_base_qual);
+		rc_remap_infos[i].accepted = accept(aln, log, config.max_seq_error, mate_qual, stats.get_min_avg_base_qual());
 		ss << bam_get_qname(r_cluster->reads[i]) << " R " << mate_seq << " " << aln.cigar_string << " " << rc_remap_infos[i].accepted << std::endl;
 		ss << log << std::endl;
     }
@@ -760,7 +760,7 @@ void remap_cluster(reads_cluster_t* r_cluster, reads_cluster_t* l_cluster, std::
     	std::string padded_mate_seq = std::string(config.clip_penalty, 'N') + mate_seq + std::string(config.clip_penalty, 'N');
 		harsh_aligner.Align(padded_mate_seq.c_str(), corrected_consensus_sequence.c_str(), corrected_consensus_sequence.length(), filter, &aln, 0);
 		std::string log;
-		lc_remap_infos[i].accepted = accept(aln, log, config.max_seq_error, mate_qual, stats.min_avg_base_qual);
+		lc_remap_infos[i].accepted = accept(aln, log, config.max_seq_error, mate_qual, stats.get_min_avg_base_qual());
 		ss << bam_get_qname(l_cluster->reads[i]) << " L " << mate_seq << " " << aln.cigar_string << " " << lc_remap_infos[i].accepted << std::endl;
 		ss << log << std::endl;
     }
@@ -1115,15 +1115,15 @@ void remap(int id, int contig_id) {
     	std::string contig_name, seq;
     	char dir;
     	hts_pos_t start, end, breakpoint;
-    	int clipped_reads;
-    	while (clipped_fin >> contig_name >> start >> end >> breakpoint >> dir >> seq >> clipped_reads) {
+    	int fwd_clipped, rev_clipped;
+    	while (clipped_fin >> contig_name >> start >> end >> breakpoint >> dir >> seq >> fwd_clipped >> rev_clipped) {
 			if (dir == 'L') {
-				anchor_t a(dir, contig_id, breakpoint, end, clipped_reads);
+				anchor_t a(dir, contig_id, breakpoint, end, fwd_clipped+rev_clipped);
 				cluster_t* c = new cluster_t(a, a, 0);
 				std::string clip_seq = seq.substr(0, breakpoint-start);
 				l_clip_clusters.push_back(new clip_cluster_t(c, clip_seq, seq));
 			} else {
-				anchor_t a(dir, contig_id, start, breakpoint, clipped_reads);
+				anchor_t a(dir, contig_id, start, breakpoint, fwd_clipped+rev_clipped);
 				cluster_t* c = new cluster_t(a, a, 0);
 				int clip_len = end - breakpoint;
 				std::string clip_seq = seq.substr(seq.length()-clip_len);
@@ -1240,7 +1240,7 @@ int main(int argc, char* argv[]) {
     std::getline(full_cmd_fin, full_cmd_str);
 
     config.parse(workdir + "/config.txt");
-    stats.parse_stats(workdir + "/stats.txt");
+    stats.parse_stats(workdir + "/stats.txt", config.per_contig_stats);
 
     contigs.read_fasta_into_map(reference_fname);
     contig_map.parse(workdir);

@@ -6,6 +6,8 @@
 #include "sam_utils.h"
 #include "libs/cptl_stl.h"
 
+const int MIN_RND_POS = 1000;
+
 std::mutex mtx;
 std::string workspace;
 config_t config;
@@ -13,6 +15,7 @@ config_t config;
 std::mutex* mtx_contig;
 std::vector<std::vector<std::string> > mate_seqs;
 
+std::unordered_map<std::string, int> min_depth_by_contig, max_depth_by_contig, median_depth_by_contig;
 std::vector<uint32_t> depths;
 uint64_t qual_counts[256];
 std::vector<std::vector<uint32_t> > dist_between_end_and_rnd;
@@ -274,6 +277,14 @@ void categorize(int id, int contig_id, std::string contig_name, std::string bam_
     if (rdc_writer) sam_close(rdc_writer);
     if (ldc_writer) sam_close(ldc_writer);
 
+    rnd_positions_depth.erase(std::remove(rnd_positions_depth.begin(), rnd_positions_depth.end(), 0), rnd_positions_depth.end());
+    if (rnd_positions_depth.size() >= MIN_RND_POS) {
+		std::sort(rnd_positions_depth.begin(), rnd_positions_depth.end());
+		min_depth_by_contig[contig_name] = rnd_positions_depth[rnd_positions_depth.size()/100];
+		median_depth_by_contig[contig_name] = rnd_positions_depth[rnd_positions_depth.size()/2];
+		max_depth_by_contig[contig_name] = rnd_positions_depth[rnd_positions_depth.size()-rnd_positions_depth.size()/100];
+    }
+
     mtx.lock();
 	for (uint32_t d : rnd_positions_depth) {
 		if (d > 0) depths.push_back(d);
@@ -383,9 +394,15 @@ int main(int argc, char* argv[]) {
 
     std::ofstream stats_out(workdir + "/stats.txt");
 	std::sort(depths.begin(), depths.end());
-	stats_out << "min_depth " << depths[depths.size()/100] << std::endl;
-	stats_out << "median_depth " << depths[depths.size()/2] << std::endl;
-	stats_out << "max_depth " << depths[depths.size()-depths.size()/100] << std::endl;
-    stats_out << "min_avg_base_qual " << min_avg_base_qual << std::endl;
+	stats_out << "min_depth . " << depths[depths.size()/100] << std::endl;
+	stats_out << "median_depth . " << depths[depths.size()/2] << std::endl;
+	stats_out << "max_depth . " << depths[depths.size()-depths.size()/100] << std::endl;
+    stats_out << "min_avg_base_qual . " << min_avg_base_qual << std::endl;
+    for (auto e : min_depth_by_contig) {
+    	std::string contig = e.first;
+    	stats_out << "min_depth " << contig << " " << min_depth_by_contig[contig] << std::endl;
+    	stats_out << "median_depth " << contig << " " << median_depth_by_contig[contig] << std::endl;
+    	stats_out << "max_depth " << contig << " " << max_depth_by_contig[contig] << std::endl;
+    }
 	stats_out.close();
 }

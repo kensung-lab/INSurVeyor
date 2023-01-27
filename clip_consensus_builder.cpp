@@ -15,12 +15,12 @@ struct consensus_t {
     int contig_id;
     hts_pos_t start, breakpoint, end;
     std::string consensus;
-    size_t clipped_reads;
+    int fwd_clipped, rev_clipped;
 
     consensus_t(bool left_clipped, int contig_id, hts_pos_t start, hts_pos_t breakpoint, hts_pos_t end,
-                const std::string& consensus, size_t clipped_reads)
+                const std::string& consensus, int fwd_clipped, int rev_clipped)
                 : left_clipped(left_clipped), contig_id(contig_id), start(start), breakpoint(breakpoint), end(end),
-                consensus(consensus), clipped_reads(clipped_reads) {}
+                consensus(consensus), fwd_clipped(fwd_clipped), rev_clipped(rev_clipped) {}
 };
 
 struct del_ins_t {
@@ -176,9 +176,12 @@ consensus_t* build_full_consensus(int contig_id, std::vector<bam_redux_t*>& clip
 
     hts_pos_t start = clipped[0]->unclipped_start(), end = 0;
     hts_pos_t breakpoint = left_clipped ? INT32_MAX : 0; // the current HTS_POS_MAX does not compile on some compilers
+    int fwd_clipped = 0, rev_clipped = 0;
     for (bam_redux_t* r : clipped) {
         breakpoint = left_clipped ? std::min(breakpoint, r->start) : std::max(breakpoint, r->end);
         end = std::max(end, r->unclipped_end());
+        if (r->is_rev()) rev_clipped++;
+        else fwd_clipped++;
     }
 
     consensus_seq = build_full_consensus_seq(clipped);
@@ -192,7 +195,7 @@ consensus_t* build_full_consensus(int contig_id, std::vector<bam_redux_t*>& clip
 
     consensus_seq = consensus_seq.substr(remove_from_start, consensus_seq.length() - remove_from_start - remove_from_end);
     consensus_t* consensus = new consensus_t(left_clipped, contig_id, start+remove_from_start, breakpoint,
-                                             end-remove_from_end, consensus_seq, clipped.size());
+                                             end-remove_from_end, consensus_seq, fwd_clipped, rev_clipped);
     return consensus;
 }
 
@@ -277,7 +280,7 @@ void build_consensuses(int id, int contig_id, std::string contig_name) {
     std::ofstream clip_fout(workspace + "/clip_consensuses/" + std::to_string(contig_id) + ".txt");
     for (consensus_t* consensus : full_consensuses) {
         clip_fout << contig_name << " " << consensus->start << " " << consensus->end << " " << consensus->breakpoint << " ";
-        clip_fout << (consensus->left_clipped ? "L " : "R ") << consensus->consensus << " " << consensus->clipped_reads << std::endl;
+        clip_fout << (consensus->left_clipped ? "L " : "R ") << consensus->consensus << " " << consensus->fwd_clipped << " " << consensus->rev_clipped << std::endl;
     }
     clip_fout.close();
 }

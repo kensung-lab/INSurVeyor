@@ -780,7 +780,7 @@ insertion_t* assemble_insertion(int ins_id, std::string& contig_name, chr_seqs_m
 		mate_seq = std::string(config.clip_penalty, 'N') + mate_seq + std::string(config.clip_penalty, 'N');
 		StripedSmithWaterman::Alignment aln;
 		harsh_aligner.Align(mate_seq.c_str(), full_assembled_seq.c_str(), full_assembled_seq.length(), filter, &aln, 0);
-		if (accept(aln, config.max_seq_error, mate_qual, stats.min_avg_base_qual)) {
+		if (accept(aln, config.max_seq_error, mate_qual, stats.get_min_avg_base_qual())) {
 			ins->r_disc_pairs++;
 			ins->rc_avg_nm += bam_aux2i(bam_aux_get(read, "NM"));
 			bam1_t* d = bam_dup1(read);
@@ -796,7 +796,7 @@ insertion_t* assemble_insertion(int ins_id, std::string& contig_name, chr_seqs_m
 		std::string mate_qual = get_mate_qual(read, matequals);
 		StripedSmithWaterman::Alignment aln;
 		harsh_aligner.Align(mate_seq.c_str(), full_assembled_seq.c_str(), full_assembled_seq.length(), filter, &aln, 0);
-		if (accept(aln, config.max_seq_error, mate_qual, stats.min_avg_base_qual)) {
+		if (accept(aln, config.max_seq_error, mate_qual, stats.get_min_avg_base_qual())) {
 			ins->l_disc_pairs++;
 			ins->lc_avg_nm += bam_aux2i(bam_aux_get(read, "NM"));
 			bam1_t* d = bam_dup1(read);
@@ -829,7 +829,7 @@ insertion_t* assemble_insertion(int ins_id, std::string& contig_name, chr_seqs_m
 		int aln_ref_begin = aln.ref_begin + (cigar_int_to_op(aln.cigar[0]) == 'S' ? 0 : config.clip_penalty);
 		int aln_ref_end = aln.ref_end - (cigar_int_to_op(aln.cigar[aln.cigar.size()]) == 'S' ? 0 : config.clip_penalty);
 		if (overlap(ins_seq_start, ins_seq_end, aln_ref_begin, aln_ref_end) >= config.min_clip_len
-				&& accept(aln, config.max_seq_error, qual_ascii, stats.min_avg_base_qual)) {
+				&& accept(aln, config.max_seq_error, qual_ascii, stats.get_min_avg_base_qual())) {
 			ins->r_disc_pairs++;
 			assembled_reads.push_back(bam_dup1(read));
 		}
@@ -842,7 +842,7 @@ insertion_t* assemble_insertion(int ins_id, std::string& contig_name, chr_seqs_m
 		int aln_ref_begin = aln.ref_begin + (cigar_int_to_op(aln.cigar[0]) == 'S' ? 0 : config.clip_penalty);
 		int aln_ref_end = aln.ref_end - (cigar_int_to_op(aln.cigar[aln.cigar.size()]) == 'S' ? 0 : config.clip_penalty);
 		if (overlap(ins_seq_start, ins_seq_end, aln_ref_begin, aln_ref_end) >= config.min_clip_len
-				&& accept(aln, config.max_seq_error, qual_ascii, stats.min_avg_base_qual)) {
+				&& accept(aln, config.max_seq_error, qual_ascii, stats.get_min_avg_base_qual())) {
 			ins->l_disc_pairs++;
 			assembled_reads.push_back(bam_dup1(read));
 		}

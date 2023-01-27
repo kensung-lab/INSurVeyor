@@ -24,9 +24,10 @@ int MAX_BP_DIST = 10;
 struct clip_consensus_t {
     hts_pos_t pos;
     std::string seq;
-    int clipped_reads;
+    int fwd_clipped, rev_clipped;
 
-    clip_consensus_t(hts_pos_t pos, std::string& seq, int clipped_reads) : pos(pos), seq(seq), clipped_reads(clipped_reads) {}
+    clip_consensus_t(hts_pos_t pos, std::string& seq, int fwd_clipped, int rev_clipped) :
+    	pos(pos), seq(seq), fwd_clipped(fwd_clipped), rev_clipped(rev_clipped) {}
 };
 
 insertion_t* get_insertion(std::string& contig_name, clip_consensus_t& rc_consensus, clip_consensus_t& lc_consensus,
@@ -68,7 +69,9 @@ insertion_t* get_insertion(std::string& contig_name, clip_consensus_t& rc_consen
     std::string ins_seq = consensus_junction_seq.substr(aln_lh.query_end+1, ins_seq_len);
     if (ins_seq_len == 0) return NULL;
 
-    insertion_t* insertion = new insertion_t(contig_name, left_bp, right_bp, 0, 0, rc_consensus.clipped_reads, lc_consensus.clipped_reads, spa.overlap, ins_seq);
+    insertion_t* insertion = new insertion_t(contig_name, left_bp, right_bp, 0, 0,
+    		rc_consensus.fwd_clipped+rc_consensus.rev_clipped,
+    		lc_consensus.fwd_clipped+lc_consensus.rev_clipped, spa.overlap, ins_seq);
     insertion->left_anchor = left_anchor, insertion->right_anchor = right_anchor;
 
     return insertion;
@@ -85,12 +88,12 @@ void call_insertions(int id, int contig_id, std::string contig_name) {
     std::vector<clip_consensus_t> rc_consensuses, lc_consensuses;
     std::string chr, dir, seq;
     hts_pos_t start, end, breakpoint;
-    int clipped_reads;
-    while (clip_fin >> chr >> start >> end >> breakpoint >> dir >> seq >> clipped_reads) {
+    int fwd_clipped, rev_clipped;
+    while (clip_fin >> chr >> start >> end >> breakpoint >> dir >> seq >> fwd_clipped >> rev_clipped) {
         if (dir == "R") {
-            rc_consensuses.push_back(clip_consensus_t(breakpoint, seq, clipped_reads));
+            rc_consensuses.push_back(clip_consensus_t(breakpoint, seq, fwd_clipped, rev_clipped));
         } else {
-            lc_consensuses.push_back(clip_consensus_t(breakpoint, seq, clipped_reads));
+            lc_consensuses.push_back(clip_consensus_t(breakpoint, seq, fwd_clipped, rev_clipped));
         }
     }
 
@@ -128,9 +131,6 @@ int main(int argc, char* argv[]) {
     contig_map_t contig_map;
     contig_map.parse(workdir);
     config.parse(workdir + "/config.txt");
-
-    stats_t stats;
-    stats.parse_stats(workdir + "/stats.txt");
 
     ctpl::thread_pool thread_pool(config.threads);
     std::vector<std::future<void> > futures;

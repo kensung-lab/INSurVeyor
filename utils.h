@@ -14,7 +14,9 @@
 KSEQ_INIT(int, read)
 
 struct config_t {
-    int threads, seed;
+
+	int threads, seed;
+    bool per_contig_stats;
     int min_insertion_size, max_insertion_size;
     int max_clipped_pos_dist, min_clip_len, min_stable_mapq;
     double max_seq_error;
@@ -36,6 +38,7 @@ struct config_t {
 
         threads = stoi(config_params["threads"]);
         seed = stoi(config_params["seed"]);
+        per_contig_stats = stoi(config_params["per_contig_stats"]);
 
         min_insertion_size = stoi(config_params["min_insertion_size"]);
         max_insertion_size = stoi(config_params["max_insertion_size"]);
@@ -52,22 +55,45 @@ struct config_t {
 };
 
 struct stats_t {
-    int min_depth, median_depth, max_depth, min_avg_base_qual;
 
-    void parse_stats(std::string stats_fname) {
+	bool per_contig_stats;
+	std::unordered_map<std::string, int> min_depth, median_depth, max_depth, min_avg_base_qual;
+
+    void parse_stats(std::string stats_fname, bool per_contig_stats) {
 		std::unordered_map<std::string, std::string> params;
 		std::ifstream fin(stats_fname);
-		std::string name, value;
-		while (fin >> name >> value) {
+		std::string name, contig, value;
+		while (fin >> name >> contig >> value) {
+			if (name == "min_depth") min_depth[contig] = stoi(value);
+			if (name == "median_depth") median_depth[contig] = stoi(value);
+			if (name == "max_depth") max_depth[contig] = stoi(value);
+			if (name == "min_avg_base_qual") min_avg_base_qual[contig] = stoi(value);
 			params[name] = value;
 		}
+		this->per_contig_stats = per_contig_stats;
 		fin.close();
-
-		min_depth = stoi(params["min_depth"]);
-		median_depth = stoi(params["median_depth"]);
-		max_depth = stoi(params["max_depth"]);
-		min_avg_base_qual = stoi(params["min_avg_base_qual"]);
 	}
+
+    int get_min_depth(std::string contig_name = ".") {
+    	if (per_contig_stats && min_depth.count(contig_name))
+    		return min_depth[contig_name];
+    	else return min_depth["."];
+    }
+    int get_median_depth(std::string contig_name = ".") {
+    	if (per_contig_stats && median_depth.count(contig_name))
+			return median_depth[contig_name];
+		else return median_depth["."];
+    }
+    int get_max_depth(std::string contig_name = ".") {
+    	if (per_contig_stats && max_depth.count(contig_name))
+			return max_depth[contig_name];
+		else return max_depth["."];
+    }
+    int get_min_avg_base_qual(std::string contig_name = ".") {
+    	if (per_contig_stats && min_avg_base_qual.count(contig_name))
+			return min_avg_base_qual[contig_name];
+		else return min_avg_base_qual["."];
+    }
 };
 
 
@@ -203,7 +229,7 @@ struct insertion_t {
     std::string id;
     std::string chr;
     hts_pos_t start, end;
-    int overlap, r_disc_pairs, l_disc_pairs, rc_reads, lc_reads;
+    int overlap, r_disc_pairs, l_disc_pairs, lc_reads, rc_reads, rc_fwd_reads, rc_rev_reads, lc_fwd_reads, lc_rev_reads;
     int r_conc_pairs = 0, l_conc_pairs = 0, median_lf_cov = 0, median_rf_cov = 0;
     int mh_len = 0;
     std::string ins_seq;
