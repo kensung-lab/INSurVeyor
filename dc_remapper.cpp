@@ -609,9 +609,10 @@ void remap_cluster(reads_cluster_t* r_cluster, reads_cluster_t* l_cluster, std::
 				   std::unordered_map<std::string, std::string>& matequals,
                    StripedSmithWaterman::Aligner& aligner, StripedSmithWaterman::Aligner& permissive_aligner,
                    StripedSmithWaterman::Aligner& aligner_to_base, StripedSmithWaterman::Aligner& harsh_aligner) {
-    std::vector<region_t> regions;
 
-    if (l_cluster->reads.size() + r_cluster->reads.size() > TOO_MANY_READS) return;
+	if (l_cluster->reads.size() + r_cluster->reads.size() > TOO_MANY_READS) return;
+
+    std::vector<region_t> regions;
 
     /* == Find candidate regions for remapping == */
     std::vector<bam1_t*> full_cluster;
@@ -780,11 +781,11 @@ void remap_cluster(reads_cluster_t* r_cluster, reads_cluster_t* l_cluster, std::
 	}
 
     /* == Try assembly == */
-	int accepted_reads = 0;
-	for (remap_info_t& remap_info : rc_remap_infos) accepted_reads += remap_info.accepted;
-	for (remap_info_t& remap_info : lc_remap_infos) accepted_reads += remap_info.accepted;
+	int rc_accepted_reads = 0, lc_accepted_reads = 0;
+	for (remap_info_t& remap_info : rc_remap_infos) rc_accepted_reads += remap_info.accepted;
+	for (remap_info_t& remap_info : lc_remap_infos) lc_accepted_reads += remap_info.accepted;
 	int tot_reads = r_cluster->reads.size() + l_cluster->reads.size();
-	if (double(accepted_reads)/tot_reads < 0.5) {
+	if (rc_accepted_reads == 0 || lc_accepted_reads == 0 || double(rc_accepted_reads+lc_accepted_reads)/tot_reads < 0.5) {
 		int curr_pred_id = pred_id++;
 		insertion_t* ins = assemble_insertion(curr_pred_id, contig_name, contigs, r_cluster, l_cluster, mateseqs, matequals,
 				aligner_to_base, harsh_aligner, kept);
