@@ -2,7 +2,7 @@ FROM ubuntu
 
 WORKDIR /home/
 
-COPY htslib-1.13.tar.bz2 .
+COPY htslib-1.16.tar.bz2 .
 COPY build_htslib.sh .
 
 RUN apt-get update 
@@ -27,4 +27,3 @@ RUN pip install pysam pyfaidx numpy
 COPY random_pos_generator.py surveyor.py ./
 
 ENTRYPOINT [ "/usr/bin/python", "/home/surveyor.py" ]
-

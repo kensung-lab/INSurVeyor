@@ -47,8 +47,8 @@ void find_spanning(int id, insertion_t* insertion, std::string bam_fname, std::s
 
     char r_region[1000], l_region[1000];
     std::stringstream l_region_ss, r_region_ss;
-	l_region_ss << insertion->chr << ":" << insertion->start-config.max_is << "-" << insertion->start+config.max_is;
-	r_region_ss << insertion->chr << ":" << insertion->end-config.max_is << "-" << insertion->end+config.max_is;
+	l_region_ss << insertion->chr << ":" << std::max(hts_pos_t(1), insertion->start-config.max_is) << "-" << insertion->start+config.max_is;
+	r_region_ss << insertion->chr << ":" << std::max(hts_pos_t(1), insertion->end-config.max_is) << "-" << insertion->end+config.max_is;
 	strcpy(l_region, l_region_ss.str().c_str());
 	strcpy(r_region, r_region_ss.str().c_str());
 

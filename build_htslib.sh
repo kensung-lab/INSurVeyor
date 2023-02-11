@@ -1,7 +1,7 @@
-tar -xjf htslib-1.13.tar.bz2
-cd htslib-1.13
+tar -xjf htslib-1.16.tar.bz2
+cd htslib-1.16
 autoheader
 autoconf
-./configure --prefix=`pwd` --disable-bz2 --disable-lzma
+./configure --prefix=`pwd`
 make
 make install
