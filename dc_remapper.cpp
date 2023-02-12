@@ -919,7 +919,7 @@ void remove_cluster_from_mm(std::multimap<int, cluster_t*>& mm, cluster_t* c) {
 }
 
 std::vector<reads_cluster_t*> cluster_reads(open_samFile_t* dc_file, int contig_id, std::unordered_map<std::string, std::string>& mateseqs,
-		std::unordered_map<std::string, std::string>& matequals, std::vector<clip_cluster_t*>& clip_clusters, std::vector<bam1_t*>& semi_mapped_pairs) {
+		std::unordered_map<std::string, std::string>& matequals, std::vector<clip_cluster_t*>& clip_clusters) {
 
 	std::string contig_name = contig_map.get_name(contig_id);
     hts_itr_t* iter = sam_itr_querys(dc_file->idx, dc_file->header, contig_name.c_str());
@@ -1049,32 +1049,6 @@ std::vector<reads_cluster_t*> cluster_reads(open_samFile_t* dc_file, int contig_
     	return rc1->reads.size() > rc2->reads.size();
     });
 
-    // add semimapped pairs
-    std::vector<Interval<bam1_t*>> iv;
-    for (bam1_t* r : semi_mapped_pairs) {
-    	if (get_sequence(r).find("N") == std::string::npos /*&& avg_qual(r) >= stats.min_avg_base_qual*/) {
-			iv.push_back(Interval<bam1_t*>(r->core.mpos, get_mate_endpos(r), r));
-    	}
-    }
-    IntervalTree<bam1_t*> it(iv);
-    std::unordered_set<bam1_t*> used_sm_reads;
-    for (reads_cluster_t* rc : read_clusters) {
-    	int start, end;
-    	if (rc->dir() == 'L') {
-    		start = rc->start(); end = start + config.max_is;
-    	} else {
-    		end = rc->end(); start = end - config.max_is;
-    	}
-    	auto sm_reads = it.findContained(start, end);
-    	for (auto i : sm_reads) {
-    		bam1_t* r = i.value;
-    		if (!used_sm_reads.count(r)) {
-				rc->add_semi_mapped_reads(bam_dup1(r));
-				used_sm_reads.insert(r);
-    		}
-    	}
-    }
-
     for (cluster_t* c : clusters) delete c;
     delete[] parents;
     delete[] sizes;
@@ -1084,6 +1058,68 @@ std::vector<reads_cluster_t*> cluster_reads(open_samFile_t* dc_file, int contig_
 
 bool is_semi_mapped(bam1_t* read) {
 	return is_proper_pair(read) && !is_mate_clipped(read);
+}
+
+void add_semi_mapped(std::string clipped_fname, int contig_id, std::vector<reads_cluster_t*>& r_clusters, std::vector<reads_cluster_t*>& l_clusters) {
+
+	if (!file_exists(clipped_fname)) return;
+
+	std::vector<bam1_t*> l_semi_mapped_pairs, r_semi_mapped_pairs;
+
+	open_samFile_t* clipped_file = open_samFile(clipped_fname.c_str(), true);
+	std::string contig_name = contig_map.get_name(contig_id);
+	hts_itr_t* iter = sam_itr_querys(clipped_file->idx, clipped_file->header, contig_name.c_str());
+	bam1_t* read = bam_init1();
+	while (sam_itr_next(clipped_file->file, iter, read) >= 0) {
+		if (is_semi_mapped(read) && get_sequence(read).find("N") == std::string::npos) {
+			if (read->core.flag & BAM_FMREVERSE) {
+				l_semi_mapped_pairs.push_back(bam_dup1(read));
+			} else {
+				r_semi_mapped_pairs.push_back(bam_dup1(read));
+			}
+		}
+	}
+	close_samFile(clipped_file);
+
+	// add semimapped pairs
+	std::vector<Interval<bam1_t*>> r_iv, l_iv;
+	for (bam1_t* r : r_semi_mapped_pairs) {
+		r_iv.push_back(Interval<bam1_t*>(r->core.mpos, get_mate_endpos(r), r));
+	}
+	for (bam1_t* r : l_semi_mapped_pairs) {
+		l_iv.push_back(Interval<bam1_t*>(r->core.mpos, get_mate_endpos(r), r));
+	}
+	IntervalTree<bam1_t*> r_it(r_iv), l_it(l_iv);
+	std::unordered_set<bam1_t*> used_sm_reads;
+	for (reads_cluster_t* rc : r_clusters) {
+		int end = rc->end(), start = end - config.max_is;
+		auto sm_reads = r_it.findContained(start, end);
+		for (auto i : sm_reads) {
+			bam1_t* r = i.value;
+			if (!used_sm_reads.count(r)) {
+				rc->add_semi_mapped_reads(bam_dup1(r));
+				used_sm_reads.insert(r);
+			}
+		}
+	}
+	for (reads_cluster_t* rc : l_clusters) {
+		int start, end;
+		start = rc->start(); end = start + config.max_is;
+		auto sm_reads = l_it.findContained(start, end);
+		for (auto i : sm_reads) {
+			bam1_t* r = i.value;
+			if (!used_sm_reads.count(r)) {
+				rc->add_semi_mapped_reads(bam_dup1(r));
+				used_sm_reads.insert(r);
+			}
+		}
+	}
+	for (bam1_t* r : r_semi_mapped_pairs) {
+		bam_destroy1(r);
+	}
+	for (bam1_t* r : l_semi_mapped_pairs) {
+		bam_destroy1(r);
+	}
 }
 
 void remap(int id, int contig_id) {
@@ -1133,27 +1169,12 @@ void remap(int id, int contig_id) {
     	}
     }
 
-	std::string clipped_fname = workdir + "/workspace/clipped/" + std::to_string(contig_id) + ".bam";
-	std::vector<bam1_t*> r_semi_mapped_pairs, l_semi_mapped_pairs;
-	if (file_exists(clipped_fname)) {
-		open_samFile_t* clipped_file = open_samFile(clipped_fname.c_str(), true);
-		std::string contig_name = contig_map.get_name(contig_id);
-		hts_itr_t* iter = sam_itr_querys(clipped_file->idx, clipped_file->header, contig_name.c_str());
-		bam1_t* read = bam_init1();
-		while (sam_itr_next(clipped_file->file, iter, read) >= 0) {
-			if (is_semi_mapped(read)) {
-				if (read->core.flag & BAM_FMREVERSE) {
-					l_semi_mapped_pairs.push_back(bam_dup1(read));
-				} else {
-					r_semi_mapped_pairs.push_back(bam_dup1(read));
-				}
-			}
-		}
-		close_samFile(clipped_file);
-	}
 
-	std::vector<reads_cluster_t*> r_clusters = cluster_reads(r_dc_file, contig_id, mateseqs, matequals, r_clip_clusters, r_semi_mapped_pairs);
-	std::vector<reads_cluster_t*> l_clusters = cluster_reads(l_dc_file, contig_id, mateseqs, matequals, l_clip_clusters, l_semi_mapped_pairs);
+	std::vector<reads_cluster_t*> r_clusters = cluster_reads(r_dc_file, contig_id, mateseqs, matequals, r_clip_clusters);
+	std::vector<reads_cluster_t*> l_clusters = cluster_reads(l_dc_file, contig_id, mateseqs, matequals, l_clip_clusters);
+
+	std::string clipped_fname = workdir + "/workspace/clipped/" + std::to_string(contig_id) + ".bam";
+	add_semi_mapped(clipped_fname, contig_id, r_clusters, l_clusters);
 
     std::vector<bam1_t*> r_reads_to_write, l_reads_to_write;
 
