@@ -743,6 +743,7 @@ void remap_cluster(reads_cluster_t* r_cluster, reads_cluster_t* l_cluster, std::
 	std::stringstream ss;
 	ss << corrected_consensus_sequence << std::endl;
 	StripedSmithWaterman::Alignment aln;
+	std::vector<std::pair<int,int>> covered_segments;
 	for (int i = 0; i < r_cluster->reads.size(); i++) {
     	std::string mate_seq = get_mate_seq(r_cluster->reads[i], mateseqs);
     	std::string mate_qual = get_mate_qual(r_cluster->reads[i], matequals);
@@ -752,6 +753,9 @@ void remap_cluster(reads_cluster_t* r_cluster, reads_cluster_t* l_cluster, std::
 		harsh_aligner.Align(padded_mate_seq.c_str(), corrected_consensus_sequence.c_str(), corrected_consensus_sequence.length(), filter, &aln, 0);
 		std::string log;
 		rc_remap_infos[i].accepted = accept(aln, log, config.max_seq_error, mate_qual, stats.get_min_avg_base_qual());
+		if (rc_remap_infos[i].accepted) {
+			covered_segments.push_back({aln.ref_begin, aln.ref_end});
+		}
 		ss << bam_get_qname(r_cluster->reads[i]) << " R " << mate_seq << " " << aln.cigar_string << " " << rc_remap_infos[i].accepted << std::endl;
 		ss << log << std::endl;
     }
@@ -762,6 +766,9 @@ void remap_cluster(reads_cluster_t* r_cluster, reads_cluster_t* l_cluster, std::
 		harsh_aligner.Align(padded_mate_seq.c_str(), corrected_consensus_sequence.c_str(), corrected_consensus_sequence.length(), filter, &aln, 0);
 		std::string log;
 		lc_remap_infos[i].accepted = accept(aln, log, config.max_seq_error, mate_qual, stats.get_min_avg_base_qual());
+		if (lc_remap_infos[i].accepted) {
+			covered_segments.push_back({aln.ref_begin, aln.ref_end});
+		}
 		ss << bam_get_qname(l_cluster->reads[i]) << " L " << mate_seq << " " << aln.cigar_string << " " << lc_remap_infos[i].accepted << std::endl;
 		ss << log << std::endl;
     }
@@ -770,6 +777,9 @@ void remap_cluster(reads_cluster_t* r_cluster, reads_cluster_t* l_cluster, std::
 		harsh_aligner.Align(padded_clip_seq.c_str(), corrected_consensus_sequence.c_str(), corrected_consensus_sequence.length(), filter, &aln, 0);
 		std::string log;
 		rc_remap_infos.rbegin()->accepted = accept(aln, log, config.max_seq_error);
+		if (rc_remap_infos.rbegin()->accepted) {
+			covered_segments.push_back({aln.ref_begin, aln.ref_end});
+		}
 		ss << "R_CLIP " << r_cluster->clip_cluster->full_seq << " " << aln.cigar_string << " " << rc_remap_infos.rbegin()->accepted << std::endl;
 	}
 	if (l_cluster->clip_cluster) {
@@ -777,6 +787,9 @@ void remap_cluster(reads_cluster_t* r_cluster, reads_cluster_t* l_cluster, std::
 		harsh_aligner.Align(padded_clip_seq.c_str(), corrected_consensus_sequence.c_str(), corrected_consensus_sequence.length(), filter, &aln, 0);
 		std::string log;
 		lc_remap_infos.rbegin()->accepted = accept(aln, log, config.max_seq_error);
+		if (lc_remap_infos.rbegin()->accepted) {
+			covered_segments.push_back({aln.ref_begin, aln.ref_end});
+		}
 		ss << "L_CLIP " << l_cluster->clip_cluster->full_seq << " " << aln.cigar_string << " " << lc_remap_infos.rbegin()->accepted << std::endl;
 	}
 
@@ -847,6 +860,26 @@ void remap_cluster(reads_cluster_t* r_cluster, reads_cluster_t* l_cluster, std::
 			auto p = remap_assembled_sequence(v, contigs.get_seq(contig_name)+remap_start, remap_end-remap_start, aligner_to_base,
 					good_left_anchor, good_right_anchor, ins_seq, full_assembled_seq);
 			if (good_left_anchor && good_right_anchor && ins_seq.find("N") == std::string::npos) {
+				// Get transposed sequence coverage
+				int ins_seq_start = p.first.query_end - config.clip_penalty;
+				int ins_seq_end = corrected_consensus_sequence.length() - (p.second.query_end - p.second.query_begin + 1 - config.clip_penalty);
+
+				int i = 0;
+				int left_seq_cov = ins_seq_start;
+				std::sort(covered_segments.begin(), covered_segments.end(), [] (std::pair<int,int>& p1, std::pair<int,int>& p2) {return p1.first < p2.first;});
+				while (i < covered_segments.size() && covered_segments[i].first <= left_seq_cov) {
+					left_seq_cov = std::max(left_seq_cov, covered_segments[i].second);
+					i++;
+				}
+
+				i = covered_segments.size()-1;
+				int right_seq_cov = ins_seq_end;
+				std::sort(covered_segments.begin(), covered_segments.end(), [] (std::pair<int,int>& p1, std::pair<int,int>& p2) {return p1.second < p2.second;});
+				while (i >= 0 && covered_segments[i].second >= right_seq_cov) {
+					right_seq_cov = std::min(right_seq_cov, covered_segments[i].first);
+					i--;
+				}
+
 				int rc_reads = pos_cluster->clip_cluster ? pos_cluster->clip_cluster->c->a1.sc_reads : 0;
 				int lc_reads = neg_cluster->clip_cluster ? neg_cluster->clip_cluster->c->a1.sc_reads : 0;
 
@@ -863,8 +896,11 @@ void remap_cluster(reads_cluster_t* r_cluster, reads_cluster_t* l_cluster, std::
 					insertion->lc_avg_nm += bam_aux2i(bam_aux_get(read, "NM"));
 				}
 				insertion->lc_avg_nm /= neg_cluster->reads.size();
-				insertion->left_anchor_cigar = p.first.cigar_string;
+				insertion->left_anchor_cigar = p.first.cigar_string; //TODO: remove the N padding (i.e., first and last 7X)
 				insertion->right_anchor_cigar = p.second.cigar_string;
+
+				insertion->left_seq_cov = left_seq_cov - ins_seq_start;
+				insertion->right_seq_cov = ins_seq_end - right_seq_cov;
 				mtx.lock();
 				trans_insertions.push_back(insertion);
 				mtx.unlock();
@@ -1370,6 +1406,8 @@ int main(int argc, char* argv[]) {
 		float f2_conv[2];
 		f2_conv[0] = insertion->rc_avg_nm, f2_conv[1] = insertion->lc_avg_nm;
 		bcf_update_info_float(out_vcf_header, bcf_entry, "AVG_STABLE_NM", f2_conv, 2);
+		int2_conv[0] = insertion->left_seq_cov, int2_conv[1] = insertion->right_seq_cov;
+		bcf_update_info_int32(out_vcf_header, bcf_entry, "TRANS_QUERY_COV", int2_conv, 2);
 
 		if (bcf_write(transurveyor_out_vcf_file, out_vcf_header, bcf_entry) != 0) {
 			throw std::runtime_error("Failed to write to " + transurveyor_out_vcf_fname + ".");

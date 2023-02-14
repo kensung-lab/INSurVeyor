@@ -561,13 +561,6 @@ std::pair<StripedSmithWaterman::Alignment, StripedSmithWaterman::Alignment> rema
 		padded_assembled_seq_rh = assembled_seq_rh + std::string(config.clip_penalty, 'N');
 		aligner_to_base.Align(padded_assembled_seq_lh.c_str(), ref, ref_len, filter, &lh_aln, 0);
 		aligner_to_base.Align(padded_assembled_seq_rh.c_str(), ref, ref_len, filter, &rh_aln, 0);
-		if (lh_aln.sw_score >= rh_aln.sw_score) {
-			aligner_to_base.Align(padded_assembled_seq_rh.c_str(), ref+lh_aln.ref_end, ref_len-lh_aln.ref_end, filter, &rh_aln, 0);
-			rh_aln.ref_begin += lh_aln.ref_end+1;
-			rh_aln.ref_end += lh_aln.ref_end+1;
-		} else if (lh_aln.sw_score < rh_aln.sw_score) {
-			aligner_to_base.Align(padded_assembled_seq_lh.c_str(), ref, rh_aln.ref_begin, filter, &lh_aln, 0);
-		}
 
 		bool lh_fully_aln = is_fully_aln(lh_aln, padded_assembled_seq_lh.length());
 		bool rh_fully_aln = is_fully_aln(rh_aln, padded_assembled_seq_rh.length());
@@ -583,6 +576,42 @@ std::pair<StripedSmithWaterman::Alignment, StripedSmithWaterman::Alignment> rema
 	good_left_anchor = lh_aln.query_begin == 0 && lh_aln.query_end-lh_aln.query_begin >= config.min_clip_len+config.clip_penalty;
 	good_right_anchor = rh_aln.query_end == padded_assembled_seq_rh.length()-1 &&
 			rh_aln.query_end-rh_aln.query_begin >= config.min_clip_len+config.clip_penalty;
+
+	int overlap_begin = std::max(lh_aln.ref_begin+config.clip_penalty, rh_aln.ref_begin),
+		overlap_end = std::min(lh_aln.ref_end, rh_aln.ref_end-config.clip_penalty);
+	if (good_left_anchor && good_right_anchor) {
+		if (overlap_end >= overlap_begin && rh_aln.ref_end-lh_aln.ref_begin >= 2*(config.min_clip_len+config.clip_penalty)) { // alignments overlap, resolve that
+			std::vector<int> lh_prefix_scores = ssw_cigar_to_prefix_ref_scores(lh_aln.cigar); // note that everything will be lowered by config.clip_penalty, but it does not matter
+			std::vector<uint32_t> rev_rh_cigar(rh_aln.cigar.rbegin(), rh_aln.cigar.rend());
+			std::vector<int> rh_suffix_scores = ssw_cigar_to_prefix_ref_scores(rev_rh_cigar);
+
+			int best_i = overlap_begin, best_score = INT32_MIN;
+			for (int i = overlap_begin; i <= overlap_end; i++) {
+				int prefix_len = i - lh_aln.ref_begin + 1, suffix_len = rh_aln.ref_end - i;
+				if (lh_prefix_scores[prefix_len] + rh_suffix_scores[suffix_len] > best_score) {
+					best_score = lh_prefix_scores[prefix_len] + rh_suffix_scores[suffix_len];
+					best_i = i;
+				}
+			}
+
+			aligner_to_base.Align(padded_assembled_seq_lh.c_str(), ref, best_i+1, filter, &lh_aln, 0);
+			aligner_to_base.Align(padded_assembled_seq_rh.c_str(), ref+best_i+1, ref_len-(best_i+1), filter, &rh_aln, 0);
+			rh_aln.ref_begin += best_i+1;
+			rh_aln.ref_end += best_i+1;
+		} else if (rh_aln.ref_begin <= lh_aln.ref_end) { // outwardly mapping, force one of the alignments to align to a consistent location
+			if (lh_aln.sw_score >= rh_aln.sw_score) {
+				aligner_to_base.Align(padded_assembled_seq_rh.c_str(), ref+lh_aln.ref_end, ref_len-lh_aln.ref_end, filter, &rh_aln, 0);
+				rh_aln.ref_begin += lh_aln.ref_end+1;
+				rh_aln.ref_end += lh_aln.ref_end+1;
+			} else if (lh_aln.sw_score < rh_aln.sw_score) {
+				aligner_to_base.Align(padded_assembled_seq_lh.c_str(), ref, rh_aln.ref_begin, filter, &lh_aln, 0);
+			}
+		}
+
+		good_left_anchor = lh_aln.query_begin == 0 && lh_aln.query_end-lh_aln.query_begin >= config.min_clip_len+config.clip_penalty;
+		good_right_anchor = rh_aln.query_end == padded_assembled_seq_rh.length()-1 &&
+				rh_aln.query_end-rh_aln.query_begin >= config.min_clip_len+config.clip_penalty;
+	}
 
 	// if one of the anchors is bad but the other is good, we may have two half assemblies
 	if (!good_left_anchor && good_right_anchor && assembled_sequences.size() >= 2) {

@@ -234,6 +234,7 @@ struct insertion_t {
     int mh_len = 0;
     std::string ins_seq;
     std::string left_anchor, right_anchor, left_anchor_cigar, right_anchor_cigar;
+    int left_seq_cov = 0, right_seq_cov = 0;
     bool left_bp_precise = false, right_bp_precise = false;
     double rc_avg_nm = 0.0, lc_avg_nm = 0.0;
 
@@ -315,6 +316,35 @@ int get_right_clip_size(const StripedSmithWaterman::Alignment& aln) {
     uint32_t r = aln.cigar[aln.cigar.size()-1];
     return cigar_int_to_op(r) == 'S' ? cigar_int_to_len(r) : 0;
 }
+
+// Returns a vector scores s.t. scores[N] contains the score of the alignment between reference[aln.ref_begin:aln.ref_begin+N]
+// and query[aln.query_begin:aln.query_begin+M]
+std::vector<int> ssw_cigar_to_prefix_ref_scores(std::vector<uint32_t>& cigar, int match = 1, int mismatch = -4, int gap_open = -6, int gap_extend = -1) {
+
+	std::vector<int> scores;
+	int score = 0;
+
+	for (uint32_t c : cigar) {
+		char op = cigar_int_to_op(c);
+		int len = cigar_int_to_len(c);
+		if (op == 'S') {
+			continue;
+		} else if (op == '=' || op == 'X') {
+			for (int i = 0; i < len; i++) {
+				score += (op == '=' ? match : mismatch);
+				scores.push_back(score);
+			}
+		} else if (op == 'D') {
+			scores.resize(scores.size()+len, score);
+			score += gap_open + len*gap_extend;
+		} else if (op == 'I') {
+			score += gap_open + len*gap_extend;
+		}
+	}
+
+	return scores;
+}
+
 
 
 #endif //SMALLINSFINDER_UTILS_H

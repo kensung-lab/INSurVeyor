@@ -124,6 +124,9 @@ bcf_hdr_t* generate_vcf_header(chr_seqs_map_t& contigs, std::string sample_name,
 			"reads supporting the insertion.\">";
 	bcf_hdr_add_hrec(header, bcf_hdr_parse_line(header, right_anchor_tag, &len));
 
+	const char* tqc_tag = "##INFO=<ID=TRANS_QUERY_COV,Number=2,Type=Float,Description=\"Length of the prefix and suffix of the transposed sequence that was covered by reads.\">";
+	bcf_hdr_add_hrec(header, bcf_hdr_parse_line(header, tqc_tag, &len));
+
 	const char* sd_tag = "##INFO=<ID=STABLE_DEPTHS,Number=2,Type=Integer,Description=\"Depths of the stable regions (in practice, the regions left and right of the insertion site).\">";
 	bcf_hdr_add_hrec(header, bcf_hdr_parse_line(header, sd_tag, &len));
 
