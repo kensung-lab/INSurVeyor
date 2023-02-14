@@ -164,6 +164,9 @@ bcf_hdr_t* generate_vcf_header(chr_seqs_map_t& contigs, std::string sample_name,
 	std::string version_tag = "##INSurVeyorVersion=" + version + "; Date=" + std::ctime(&now_time);
 	bcf_hdr_add_hrec(header, bcf_hdr_parse_line(header, version_tag.c_str(), &len));
 
+	std::string called_by = "##calledBy=INSurVeyor " + version;
+	bcf_hdr_add_hrec(header, bcf_hdr_parse_line(header, called_by.c_str(), &len));
+
 	// add samples
 	bcf_hdr_add_sample(header, sample_name.c_str());
 
