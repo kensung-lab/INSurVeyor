@@ -229,7 +229,7 @@ struct insertion_t {
     std::string id;
     std::string chr;
     hts_pos_t start, end;
-    int overlap, r_disc_pairs, l_disc_pairs, lc_reads, rc_reads, rc_fwd_reads, rc_rev_reads, lc_fwd_reads, lc_rev_reads;
+    int overlap, r_disc_pairs, l_disc_pairs, rc_fwd_reads = 0, rc_rev_reads = 0, lc_fwd_reads = 0, lc_rev_reads = 0;
     int r_conc_pairs = 0, l_conc_pairs = 0, median_lf_cov = 0, median_rf_cov = 0;
     int mh_len = 0;
     std::string ins_seq;
@@ -239,9 +239,13 @@ struct insertion_t {
     double rc_avg_nm = 0.0, lc_avg_nm = 0.0;
 
     insertion_t(std::string chr, hts_pos_t start, hts_pos_t end, int r_disc_pairs, int l_disc_pairs,
-    		int rc_reads, int lc_reads, int overlap, std::string ins_seq) :
-    chr(chr), start(start), end(end), r_disc_pairs(r_disc_pairs), l_disc_pairs(l_disc_pairs), rc_reads(rc_reads), lc_reads(lc_reads),
+    		int rc_fwd_reads, int rc_rev_reads, int lc_fwd_reads, int lc_rev_reads, int overlap, std::string ins_seq) :
+	chr(chr), start(start), end(end), r_disc_pairs(r_disc_pairs), l_disc_pairs(l_disc_pairs),
+	rc_fwd_reads(rc_fwd_reads), rc_rev_reads(rc_rev_reads), lc_fwd_reads(lc_fwd_reads), lc_rev_reads(lc_rev_reads),
 	overlap(overlap), ins_seq(ins_seq) {}
+
+    int rc_reads() { return rc_fwd_reads + rc_rev_reads; }
+    int lc_reads() { return lc_fwd_reads + lc_rev_reads; }
 };
 std::string unique_key(insertion_t* ins) {
 	return ins->chr + ":" + std::to_string(ins->start) + ":" + std::to_string(ins->end) + ":" + ins->ins_seq;
@@ -319,12 +323,15 @@ int get_right_clip_size(const StripedSmithWaterman::Alignment& aln) {
 
 // Returns a vector scores s.t. scores[N] contains the score of the alignment between reference[aln.ref_begin:aln.ref_begin+N]
 // and query[aln.query_begin:aln.query_begin+M]
-std::vector<int> ssw_cigar_to_prefix_ref_scores(std::vector<uint32_t>& cigar, int match = 1, int mismatch = -4, int gap_open = -6, int gap_extend = -1) {
+std::vector<int> ssw_cigar_to_prefix_ref_scores(uint32_t* cigar, int cigar_len,
+		int match = 1, int mismatch = -4, int gap_open = -6, int gap_extend = -1) {
 
 	std::vector<int> scores;
+	scores.push_back(0);
 	int score = 0;
 
-	for (uint32_t c : cigar) {
+	for (int i = 0; i < cigar_len; i++) {
+		uint32_t c = cigar[i];
 		char op = cigar_int_to_op(c);
 		int len = cigar_int_to_len(c);
 		if (op == 'S') {

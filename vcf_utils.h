@@ -102,6 +102,12 @@ bcf_hdr_t* generate_vcf_header(chr_seqs_map_t& contigs, std::string sample_name,
 	const char* sr_tag = "##INFO=<ID=SPLIT_READS,Number=2,Type=Integer,Description=\"Split reads supporting the left and right breakpoints of this insertion.\">";
 	bcf_hdr_add_hrec(header, bcf_hdr_parse_line(header, sr_tag, &len));
 
+	const char* fwd_sr_tag = "##INFO=<ID=FWD_SPLIT_READS,Number=2,Type=Integer,Description=\"Forward split reads supporting the left and right breakpoints of this insertion.\">";
+	bcf_hdr_add_hrec(header, bcf_hdr_parse_line(header, fwd_sr_tag, &len));
+
+	const char* rev_sr_tag = "##INFO=<ID=REV_SPLIT_READS,Number=2,Type=Integer,Description=\"Reverse split reads supporting the left and right breakpoints of this insertion.\">";
+	bcf_hdr_add_hrec(header, bcf_hdr_parse_line(header, rev_sr_tag, &len));
+
 	const char* span_tag = "##INFO=<ID=SPANNING_READS,Number=2,Type=Integer,Description=\"Negative evidence.\">";
 	bcf_hdr_add_hrec(header, bcf_hdr_parse_line(header, span_tag, &len));
 
@@ -252,8 +258,12 @@ void insertion_to_bcf_entry(insertion_t* insertion, bcf_hdr_t* hdr, bcf1_t* bcf_
 	bcf_update_info_string(hdr, bcf_entry, "SVINSSEQ", insertion->ins_seq.c_str());
 
 	int int2_conv[2];
-	int2_conv[0] = insertion->rc_reads, int2_conv[1] = insertion->lc_reads;
+	int2_conv[0] = insertion->rc_reads(), int2_conv[1] = insertion->lc_reads();
 	bcf_update_info_int32(hdr, bcf_entry, "SPLIT_READS", int2_conv, 2);
+	int2_conv[0] = insertion->rc_fwd_reads, int2_conv[1] = insertion->lc_fwd_reads;
+	bcf_update_info_int32(hdr, bcf_entry, "FWD_SPLIT_READS", int2_conv, 2);
+	int2_conv[0] = insertion->rc_rev_reads, int2_conv[1] = insertion->lc_rev_reads;
+	bcf_update_info_int32(hdr, bcf_entry, "REV_SPLIT_READS", int2_conv, 2);
 
 	// add GT info
 	int gt[1];

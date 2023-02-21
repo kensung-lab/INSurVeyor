@@ -15,7 +15,7 @@ struct clip_cluster_t {
     }
 
     std::string to_string() {
-        return std::to_string(c->a1.start) + "-" + std::to_string(c->a1.end) + "," + std::to_string(c->a1.sc_reads);
+        return std::to_string(c->a1.start) + "-" + std::to_string(c->a1.end) + "," + std::to_string(c->a1.sc_reads());
     }
 };
 
@@ -33,7 +33,7 @@ struct reads_cluster_t {
     }
     void add_clip_cluster(clip_cluster_t* clip_cluster) {
         if (!clip_cluster) return;
-        if (!this->clip_cluster || this->clip_cluster->c->a1.sc_reads < clip_cluster->c->a1.sc_reads) {
+        if (!this->clip_cluster || this->clip_cluster->c->a1.sc_reads() < clip_cluster->c->a1.sc_reads()) {
             this->clip_cluster = clip_cluster;
         }
     }

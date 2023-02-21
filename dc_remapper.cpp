@@ -640,8 +640,7 @@ void remap_cluster(reads_cluster_t* r_cluster, reads_cluster_t* l_cluster, std::
 
     std::string contig_name = contig_map.get_name(contig_id);
     if (regions.empty()) {
-    	int curr_pred_id = pred_id++;
-		insertion_t* ins = assemble_insertion(curr_pred_id, contig_name, contigs, r_cluster, l_cluster, mateseqs, matequals,
+		insertion_t* ins = assemble_insertion(contig_name, contigs, r_cluster, l_cluster, mateseqs, matequals,
 				aligner_to_base, harsh_aligner, kept);
 
 		if (ins != NULL) {
@@ -799,8 +798,7 @@ void remap_cluster(reads_cluster_t* r_cluster, reads_cluster_t* l_cluster, std::
 	for (remap_info_t& remap_info : lc_remap_infos) lc_accepted_reads += remap_info.accepted;
 	int tot_reads = r_cluster->reads.size() + l_cluster->reads.size();
 	if (rc_accepted_reads == 0 || lc_accepted_reads == 0 || double(rc_accepted_reads+lc_accepted_reads)/tot_reads < 0.5) {
-		int curr_pred_id = pred_id++;
-		insertion_t* ins = assemble_insertion(curr_pred_id, contig_name, contigs, r_cluster, l_cluster, mateseqs, matequals,
+		insertion_t* ins = assemble_insertion(contig_name, contigs, r_cluster, l_cluster, mateseqs, matequals,
 				aligner_to_base, harsh_aligner, kept);
 
 		if (ins != NULL) {
@@ -880,11 +878,20 @@ void remap_cluster(reads_cluster_t* r_cluster, reads_cluster_t* l_cluster, std::
 					i--;
 				}
 
-				int rc_reads = pos_cluster->clip_cluster ? pos_cluster->clip_cluster->c->a1.sc_reads : 0;
-				int lc_reads = neg_cluster->clip_cluster ? neg_cluster->clip_cluster->c->a1.sc_reads : 0;
+				int rc_reads = pos_cluster->clip_cluster ? pos_cluster->clip_cluster->c->a1.sc_reads() : 0;
+				int lc_reads = neg_cluster->clip_cluster ? neg_cluster->clip_cluster->c->a1.sc_reads() : 0;
+				int rc_fwd_reads = 0, rc_rev_reads = 0, lc_fwd_reads = 0, lc_rev_reads = 0;
+				if (pos_cluster->clip_cluster) {
+					rc_fwd_reads = pos_cluster->clip_cluster->c->a1.fwd_sc_reads;
+					rc_rev_reads = pos_cluster->clip_cluster->c->a1.rev_sc_reads;
+				}
+				if (neg_cluster->clip_cluster) {
+					lc_fwd_reads = neg_cluster->clip_cluster->c->a1.fwd_sc_reads;
+					lc_rev_reads = neg_cluster->clip_cluster->c->a1.rev_sc_reads;
+				}
 
 				insertion_t* insertion = new insertion_t(contig_name, remap_start + p.first.ref_end, remap_start + p.second.ref_begin-1,
-						pos_cluster->reads.size(), neg_cluster->reads.size(), rc_reads, lc_reads, 0, ins_seq);
+						pos_cluster->reads.size(), neg_cluster->reads.size(), rc_fwd_reads, rc_rev_reads, lc_fwd_reads, lc_rev_reads, 0, ins_seq);
 				insertion->left_anchor = std::to_string(remap_start + p.first.ref_begin) + "-" + std::to_string(remap_start + p.first.ref_end);
 				insertion->right_anchor = std::to_string(remap_start + p.second.ref_begin) + "-" + std::to_string(remap_start + p.second.ref_end);
 				insertion->left_bp_precise = left_bp_precise, insertion->right_bp_precise = right_bp_precise;
@@ -970,7 +977,7 @@ std::vector<reads_cluster_t*> cluster_reads(open_samFile_t* dc_file, int contig_
 
         if (mate_seq.empty() || mate_seq.find("N") != std::string::npos) continue;
 
-        anchor_t a(bam_is_rev(read) ? 'L' : 'R', contig_id, read->core.pos, bam_endpos(read), 0);
+        anchor_t a(bam_is_rev(read) ? 'L' : 'R', contig_id, read->core.pos, bam_endpos(read), 0, 0);
         cluster_t* c = new cluster_t(a, a, 1);
 
         c->id = clusters.size();
@@ -1191,12 +1198,12 @@ void remap(int id, int contig_id) {
     	int fwd_clipped, rev_clipped;
     	while (clipped_fin >> contig_name >> start >> end >> breakpoint >> dir >> seq >> fwd_clipped >> rev_clipped) {
 			if (dir == 'L') {
-				anchor_t a(dir, contig_id, breakpoint, end, fwd_clipped+rev_clipped);
+				anchor_t a(dir, contig_id, breakpoint, end, fwd_clipped, rev_clipped);
 				cluster_t* c = new cluster_t(a, a, 0);
 				std::string clip_seq = seq.substr(0, breakpoint-start);
 				l_clip_clusters.push_back(new clip_cluster_t(c, clip_seq, seq));
 			} else {
-				anchor_t a(dir, contig_id, start, breakpoint, fwd_clipped+rev_clipped);
+				anchor_t a(dir, contig_id, start, breakpoint, fwd_clipped, rev_clipped);
 				cluster_t* c = new cluster_t(a, a, 0);
 				int clip_len = end - breakpoint;
 				std::string clip_seq = seq.substr(seq.length()-clip_len);

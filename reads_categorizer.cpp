@@ -398,11 +398,12 @@ int main(int argc, char* argv[]) {
 	stats_out << "median_depth . " << depths[depths.size()/2] << std::endl;
 	stats_out << "max_depth . " << depths[depths.size()-depths.size()/100] << std::endl;
     stats_out << "min_avg_base_qual . " << min_avg_base_qual << std::endl;
-    for (auto e : min_depth_by_contig) {
-    	std::string contig = e.first;
-    	stats_out << "min_depth " << contig << " " << min_depth_by_contig[contig] << std::endl;
-    	stats_out << "median_depth " << contig << " " << median_depth_by_contig[contig] << std::endl;
-    	stats_out << "max_depth " << contig << " " << max_depth_by_contig[contig] << std::endl;
+    for (size_t contig_id = 0; contig_id < contig_map.size(); contig_id++) {
+		std::string contig_name = contig_map.get_name(contig_id);
+		if (!min_depth_by_contig.count(contig_name)) continue;
+    	stats_out << "min_depth " << contig_name << " " << min_depth_by_contig[contig_name] << std::endl;
+    	stats_out << "median_depth " << contig_name << " " << median_depth_by_contig[contig_name] << std::endl;
+    	stats_out << "max_depth " << contig_name << " " << max_depth_by_contig[contig_name] << std::endl;
     }
 	stats_out.close();
 }

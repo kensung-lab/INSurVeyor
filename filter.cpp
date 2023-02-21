@@ -17,22 +17,14 @@ contig_map_t contig_map;
 
 std::vector<uint32_t> min_disc_pairs_by_size;
 
-int support(prediction_t& pred) {
-    return pred.disc_pairs + std::min(pred.bp1.sc_reads, pred.bp2.sc_reads);
-}
 std::pair<int, int> support(insertion_t* insertion) {
-	return {insertion->r_disc_pairs+insertion->rc_reads, insertion->l_disc_pairs+insertion->lc_reads};
+	return {insertion->r_disc_pairs+insertion->rc_reads(), insertion->l_disc_pairs+insertion->lc_reads()};
 }
 
-double ptn_score(const prediction_t& pred) {
-    int positive = pred.disc_pairs + pred.bp1.sc_reads;
-    int negative = pred.bp1.spanning_reads;
-    return double(positive)/(positive+negative);
-}
 std::pair<double, double> ptn_score(insertion_t* insertion) {
-	int r_positive = insertion->r_disc_pairs + insertion->rc_reads;
+	int r_positive = insertion->r_disc_pairs + insertion->rc_reads();
 	int r_negative = insertion->r_conc_pairs;
-	int l_positive = insertion->l_disc_pairs + insertion->lc_reads;
+	int l_positive = insertion->l_disc_pairs + insertion->lc_reads();
 	int l_negative = insertion->l_conc_pairs;
 	return {double(r_positive)/(r_positive+r_negative), double(l_positive)/(l_positive+l_negative)};
 }
@@ -59,7 +51,7 @@ void add_AST_filters(insertion_t* insertion, std::vector<std::string>& filters) 
 	int d = insertion->ins_seq.find("-");
 	if (is_homopolymer(insertion->ins_seq.substr(0, d))) filters.push_back("HOMOPOLYMER_INSSEQ");
 	else if (d != std::string::npos && is_homopolymer(insertion->ins_seq.substr(d+1))) filters.push_back("HOMOPOLYMER_INSSEQ");
-	if (insertion->rc_reads > stats.get_max_depth() || insertion->lc_reads > stats.get_max_depth()) filters.push_back("ANOMALOUS_SC_NUMBER");
+	if (insertion->rc_reads() > stats.get_max_depth() || insertion->lc_reads() > stats.get_max_depth()) filters.push_back("ANOMALOUS_SC_NUMBER");
 }
 
 std::vector<std::string> get_small_insertions_filterlist(insertion_t* insertion) {
@@ -142,7 +134,7 @@ int main(int argc, char* argv[]) {
 		std::string ins_seq = get_ins_seq(bcf_entry, transurveyor_ins_hdr);
 
 		std::vector<insertion_t*>& dst_contig_insertions = final_insertions_by_contig[contig_name];
-		insertion_t* insertion = new insertion_t(contig_name, bcf_entry->pos, get_sv_end(bcf_entry, transurveyor_ins_hdr), 0, 0, 0, 0, 0, ins_seq);
+		insertion_t* insertion = new insertion_t(contig_name, bcf_entry->pos, get_sv_end(bcf_entry, transurveyor_ins_hdr), 0, 0, 0, 0, 0, 0, 0, ins_seq);
 
 		int* stable_depths = NULL;
 		int size = 0;
@@ -156,13 +148,22 @@ int main(int argc, char* argv[]) {
 		size = 0;
 		bcf_get_info_int32(transurveyor_ins_hdr, bcf_entry, "SPLIT_READS", &split_reads, &size);
 
+		int* fwd_split_reads = NULL;
+		size = 0;
+		bcf_get_info_int32(transurveyor_ins_hdr, bcf_entry, "FWD_SPLIT_READS", &fwd_split_reads, &size);
+
+		int* rev_split_reads = NULL;
+		size = 0;
+		bcf_get_info_int32(transurveyor_ins_hdr, bcf_entry, "REV_SPLIT_READS", &rev_split_reads, &size);
+
 		int* spanning_reads = NULL;
 		size = 0;
 		bcf_get_info_int32(transurveyor_ins_hdr, bcf_entry, "SPANNING_READS", &spanning_reads, &size);
 
 		insertion->median_lf_cov = stable_depths[0], insertion->median_rf_cov = stable_depths[1];
 		insertion->r_disc_pairs = discordants[0], insertion->l_disc_pairs = discordants[1];
-		insertion->rc_reads = split_reads[0], insertion->lc_reads = split_reads[1];
+		insertion->rc_fwd_reads = fwd_split_reads[0], insertion->lc_fwd_reads = fwd_split_reads[1];
+		insertion->rc_rev_reads = rev_split_reads[0], insertion->lc_rev_reads = rev_split_reads[1];
 		insertion->r_conc_pairs = spanning_reads[0], insertion->l_conc_pairs = spanning_reads[1];
 
 		std::string mh_seq;
@@ -205,6 +206,7 @@ int main(int argc, char* argv[]) {
 		if (bcf_has_filter(out_vcf_header, bcf_entry, (char*) "PASS")) {
 			final_insertions_by_contig[contig_name].push_back(insertion);
 		}
+		bcf_unpack(bcf_entry, BCF_UN_ALL);
 		final_insertions_set.push_back(bcf_dup(bcf_entry));
 	}
 
@@ -221,7 +223,7 @@ int main(int argc, char* argv[]) {
 		std::string ins_seq = get_ins_seq(bcf_entry, assembled_ins_hdr);
 
 		std::vector<insertion_t*>& dst_contig_insertions = final_insertions_by_contig[contig_name];
-		insertion_t* insertion = new insertion_t(contig_name, bcf_entry->pos, get_sv_end(bcf_entry, assembled_ins_hdr), 0, 0, 0, 0, 0, ins_seq);
+		insertion_t* insertion = new insertion_t(contig_name, bcf_entry->pos, get_sv_end(bcf_entry, assembled_ins_hdr), 0, 0, 0, 0, 0, 0, 0, ins_seq);
 
 		int* stable_depths = NULL;
 		int size = 0;
@@ -243,6 +245,7 @@ int main(int argc, char* argv[]) {
 		if (bcf_has_filter(out_vcf_header, bcf_entry, (char*) "PASS")) {
 			final_insertions_by_contig[contig_name].push_back(insertion);
 		}
+		bcf_unpack(bcf_entry, BCF_UN_ALL);
 		final_insertions_set.push_back(bcf_dup(bcf_entry));
 	}
 
@@ -259,12 +262,21 @@ int main(int argc, char* argv[]) {
 		int size = 0;
 		bcf_get_info_int32(out_vcf_header, bcf_entry, "SPLIT_READS", &split_reads, &size);
 
+		int* fwd_split_reads = NULL;
+		size = 0;
+		bcf_get_info_int32(transurveyor_ins_hdr, bcf_entry, "FWD_SPLIT_READS", &fwd_split_reads, &size);
+
+		int* rev_split_reads = NULL;
+		size = 0;
+		bcf_get_info_int32(transurveyor_ins_hdr, bcf_entry, "REV_SPLIT_READS", &rev_split_reads, &size);
+
 		int* stable_depths = NULL;
 		size = 0;
 		bcf_get_info_int32(out_vcf_header, bcf_entry, "STABLE_DEPTHS", &stable_depths, &size);
 
-		insertion_t* insertion = new insertion_t(contig_name, bcf_entry->pos, get_sv_end(bcf_entry, out_vcf_header), 0, 0, split_reads[0],
-				split_reads[1], 0, get_ins_seq(bcf_entry, out_vcf_header));
+		insertion_t* insertion = new insertion_t(contig_name, bcf_entry->pos, get_sv_end(bcf_entry, out_vcf_header),
+				0, 0, fwd_split_reads[0], rev_split_reads[0], fwd_split_reads[1], rev_split_reads[1],
+				0, get_ins_seq(bcf_entry, out_vcf_header));
 		insertion->median_lf_cov = stable_depths[0], insertion->median_rf_cov = stable_depths[1];
 
 		std::vector<std::string> filters = get_small_insertions_filterlist(insertion);
@@ -286,11 +298,11 @@ int main(int argc, char* argv[]) {
 		}
 	}
 
-
 	// sort and write final set of insertions to file
+	for (bcf1_t* b : final_insertions_set) bcf_unpack(b, BCF_UN_ALL);
 	std::sort(final_insertions_set.begin(), final_insertions_set.end(), [](const bcf1_t* b1, const bcf1_t* b2) {
-		if (b1->rid != b2->rid) return b1->rid < b2->rid;
-		return b1->pos < b2->pos;
+		std::string id1 = std::string(b1->d.id), id2 = std::string(b2->d.id);
+		return std::tie(b1->rid, b1->pos, id1) < std::tie(b2->rid, b2->pos, id2);
 	});
 
 	std::string out_vcf_fname = workdir + "/out.vcf.gz";

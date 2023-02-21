@@ -70,8 +70,7 @@ insertion_t* get_insertion(std::string& contig_name, clip_consensus_t& rc_consen
     if (ins_seq_len == 0) return NULL;
 
     insertion_t* insertion = new insertion_t(contig_name, left_bp, right_bp, 0, 0,
-    		rc_consensus.fwd_clipped+rc_consensus.rev_clipped,
-    		lc_consensus.fwd_clipped+lc_consensus.rev_clipped, spa.overlap, ins_seq);
+			rc_consensus.fwd_clipped, rc_consensus.rev_clipped, lc_consensus.fwd_clipped, lc_consensus.rev_clipped, spa.overlap, ins_seq);
     insertion->left_anchor = left_anchor, insertion->right_anchor = right_anchor;
 
     return insertion;
@@ -156,11 +155,11 @@ int main(int argc, char* argv[]) {
 		throw std::runtime_error("Failed to write the VCF header to " + out_vcf_fname + ".");
 	}
 
-	std::sort(insertions.begin(), insertions.end(), [&out_vcf_header](const insertion_t* i1, const insertion_t* i2) {
+	std::sort(insertions.begin(), insertions.end(), [&out_vcf_header](insertion_t* i1, insertion_t* i2) {
 		int contig_id1 = bcf_hdr_name2id(out_vcf_header, i1->chr.c_str());
 		int contig_id2 = bcf_hdr_name2id(out_vcf_header, i2->chr.c_str());
 		// negative because we want descending order
-		int sc_score1 = -(i1->rc_reads*i1->lc_reads), sc_score2 = -(i2->rc_reads*i2->lc_reads);
+		int sc_score1 = -(i1->rc_reads()*i1->lc_reads()), sc_score2 = -(i2->rc_reads()*i2->lc_reads());
 		int overlap1 = -i1->overlap, overlap2 = -i2->overlap;
 		return std::tie(contig_id1, i1->start, i1->end, i1->ins_seq, sc_score2, overlap1) <
 			   std::tie(contig_id2, i2->start, i2->end, i2->ins_seq, sc_score1, overlap2);
