@@ -130,10 +130,10 @@ region_t get_region(std::vector<bam1_t*> subcluster, std::string& m_contig_name)
     hts_pos_t end = 0;
     if (leftmost_reverse_mate != NULL) {
         start = std::min(start, leftmost_reverse_mate->core.mpos-config.max_is);
-        end = std::max(end, leftmost_reverse_mate->core.mpos+config.max_insertion_size);
+        end = std::max(end, leftmost_reverse_mate->core.mpos+config.max_trans_size);
     }
     if (rightmost_forward_mate != NULL) {
-        start = std::min(start, rightmost_forward_mate->core.mpos-config.max_insertion_size);
+        start = std::min(start, rightmost_forward_mate->core.mpos-config.max_trans_size);
         end = std::max(end, rightmost_forward_mate->core.mpos+config.max_is);
     }
 
@@ -1339,7 +1339,7 @@ int main(int argc, char* argv[]) {
 	if (assembled_out_vcf_file == NULL) {
 		throw std::runtime_error("Unable to open file " + assembled_out_vcf_fname + ".");
 	}
-	bcf_hdr_t* out_vcf_header = generate_vcf_header(contigs, sample_name, config.min_insertion_size, full_cmd_str, config.version);
+	bcf_hdr_t* out_vcf_header = generate_vcf_header(contigs, sample_name, config, full_cmd_str);
 	if (bcf_hdr_write(assembled_out_vcf_file, out_vcf_header) != 0) {
 		throw std::runtime_error("Failed to write the VCF header to " + assembled_out_vcf_fname + ".");
 	}

@@ -3,6 +3,7 @@
 
 #include <ctime>
 #include <chrono>
+#include <sstream>
 
 #include "htslib/vcf.h"
 #include "utils.h"
@@ -21,7 +22,7 @@ bcf_hrec_t* generate_contig_hrec() {
 	}
 	return contig_hrec;
 }
-bcf_hdr_t* generate_vcf_header(chr_seqs_map_t& contigs, std::string sample_name, int min_ins_size, std::string command, std::string version) {
+bcf_hdr_t* generate_vcf_header(chr_seqs_map_t& contigs, std::string sample_name, config_t config, std::string command) {
 	bcf_hdr_t* header = bcf_hdr_init("w");
 
 	// add contigs
@@ -40,7 +41,7 @@ bcf_hdr_t* generate_vcf_header(chr_seqs_map_t& contigs, std::string sample_name,
 
 	// add FILTER
 	char size_flt_tag[1000];
-	sprintf(size_flt_tag, "##FILTER=<ID=SMALL,Description=\"Insertion smaller than %d bp.\">", min_ins_size);
+	sprintf(size_flt_tag, "##FILTER=<ID=SMALL,Description=\"Insertion smaller than %d bp.\">", config.min_insertion_size);
 	bcf_hdr_add_hrec(header, bcf_hdr_parse_line(header, size_flt_tag, &len));
 
 	const char* anomalous_sc_flt_tag = "##FILTER=<ID=ANOMALOUS_SC_NUMBER,Description=\"The number of soft-clipped reads supporting this call is too large.\">";
@@ -167,10 +168,21 @@ bcf_hdr_t* generate_vcf_header(chr_seqs_map_t& contigs, std::string sample_name,
 
 	auto now = std::chrono::system_clock::now();
 	std::time_t now_time = std::chrono::system_clock::to_time_t(now);
-	std::string version_tag = "##INSurVeyorVersion=" + version + "; Date=" + std::ctime(&now_time);
+	std::string version_tag = "##INSurVeyorVersion=" + config.version + "; Date=" + std::ctime(&now_time);
 	bcf_hdr_add_hrec(header, bcf_hdr_parse_line(header, version_tag.c_str(), &len));
 
-	std::string called_by = "##calledBy=INSurVeyor " + version;
+	std::stringstream called_by_ss;
+	called_by_ss << "##calledBy=INSurVeyor " << config.version << "; ";
+	called_by_ss << "seed: " << config.seed << "; ";
+	called_by_ss << "max_clipped_pos_dist: " << config.max_clipped_pos_dist << "; ";
+	called_by_ss << "min_insertion_size: " << config.min_insertion_size << "; ";
+	called_by_ss << "max_trans_size: " << config.max_trans_size << "; ";
+	called_by_ss << "min_stable_mapq: " << config.min_stable_mapq << "; ";
+	called_by_ss << "min_clip_len: " << config.min_clip_len << "; ";
+	called_by_ss << "max_seq_error: " << config.max_seq_error << "; ";
+	called_by_ss << "sampling-regions: " << (config.sampling_regions.empty() ? "no" : config.sampling_regions) << "; ";
+	called_by_ss << "per-contig-stats: " << (config.per_contig_stats ? "true" : "false") << "; ";
+	std::string called_by = called_by_ss.str();
 	bcf_hdr_add_hrec(header, bcf_hdr_parse_line(header, called_by.c_str(), &len));
 
 	// add samples

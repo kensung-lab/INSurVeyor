@@ -23,8 +23,8 @@ cmd_parser.add_argument('--max_clipped_pos_dist', type=int, default=5, help='Max
 cmd_parser.add_argument('--min_insertion_size', type=int, default=50, help='Minimum size of the insertion to be called.'
                                                                      'Smaller insertions will be reported anyway but marked'
                                                                      'as SMALL in the FILTER field.')
-cmd_parser.add_argument('--max_insertion_size', type=int, default=10000, help='Maximum size of the insertions which '
-                                                                              'INSurVeyor will try to predict.')
+cmd_parser.add_argument('--max_trans_size', type=int, default=10000, help='Maximum size of the transpositions which '
+                                                                          'INSurVeyor will predict.')
 cmd_parser.add_argument('--min_stable_mapq', type=int, default=20, help='Minimum MAPQ for a stable read.')
 cmd_parser.add_argument('--min_clip_len', type=int, default=15, help='Minimum clip len to consider.')
 cmd_parser.add_argument('--max_seq_error', type=float, default=0.04, help='Max sequencing error admissible on the platform used.')
@@ -52,10 +52,12 @@ config_file.write("threads %d\n" % cmd_args.threads)
 config_file.write("seed %d\n" % cmd_args.seed)
 config_file.write("max_clipped_pos_dist %d\n" % cmd_args.max_clipped_pos_dist)
 config_file.write("min_insertion_size %d\n" % cmd_args.min_insertion_size)
-config_file.write("max_insertion_size %d\n" % cmd_args.max_insertion_size)
+config_file.write("max_trans_size %d\n" % cmd_args.max_trans_size)
 config_file.write("min_stable_mapq %d\n" % cmd_args.min_stable_mapq)
 config_file.write("min_clip_len %d\n" % cmd_args.min_clip_len)
 config_file.write("max_seq_error %f\n" % cmd_args.max_seq_error)
+if cmd_args.sampling_regions:
+    config_file.write("sampling_regions %s\n" % cmd_args.sampling_regions)
 config_file.write("per_contig_stats %d\n" % cmd_args.per_contig_stats)
 config_file.write("version %s\n" % VERSION)
 
@@ -180,4 +182,5 @@ end = time.time()
 print("Filtering info added in %d [s]" % (end-start))
 
 filter_cmd = SURV_PATH + "/filter %s %s 0.25" % (cmd_args.workdir, cmd_args.reference)
+print("Executing:", filter_cmd)
 os.system(filter_cmd)
