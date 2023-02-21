@@ -18,16 +18,16 @@ cmd_parser.add_argument('workdir', help='Working directory for Surveyor to use.'
 cmd_parser.add_argument('reference', help='Reference genome in FASTA format.')
 cmd_parser.add_argument('--threads', type=int, default=1, help='Number of threads to be used.')
 cmd_parser.add_argument('--seed', type=int, default=0, help='Seed for random sampling of genomic positions.')
-cmd_parser.add_argument('--max_clipped_pos_dist', type=int, default=5, help='Max distance (in bp) for two clips to be considered '
+cmd_parser.add_argument('--max-clipped-pos-dist', type=int, default=5, help='Max distance (in bp) for two clips to be considered '
                                                                    'representing the same breakpoint.')
-cmd_parser.add_argument('--min_insertion_size', type=int, default=50, help='Minimum size of the insertion to be called.'
+cmd_parser.add_argument('--min-insertion-size', type=int, default=50, help='Minimum size of the insertion to be called.'
                                                                      'Smaller insertions will be reported anyway but marked'
                                                                      'as SMALL in the FILTER field.')
-cmd_parser.add_argument('--max_trans_size', type=int, default=10000, help='Maximum size of the transpositions which '
+cmd_parser.add_argument('--max-trans-size', type=int, default=10000, help='Maximum size of the transpositions which '
                                                                           'INSurVeyor will predict.')
-cmd_parser.add_argument('--min_stable_mapq', type=int, default=20, help='Minimum MAPQ for a stable read.')
-cmd_parser.add_argument('--min_clip_len', type=int, default=15, help='Minimum clip len to consider.')
-cmd_parser.add_argument('--max_seq_error', type=float, default=0.04, help='Max sequencing error admissible on the platform used.')
+cmd_parser.add_argument('--min-stable-mapq', type=int, default=20, help='Minimum MAPQ for a stable read.')
+cmd_parser.add_argument('--min-clip-len', type=int, default=15, help='Minimum clip len to consider.')
+cmd_parser.add_argument('--max-seq-error', type=float, default=0.04, help='Max sequencing error admissible on the platform used.')
 cmd_parser.add_argument('--sampling-regions', help='File in BED format containing a list of regions to be used to estimate'
                                                    'statistics such as depth.')
 cmd_parser.add_argument('--per-contig-stats', action='store_true',

@@ -5,6 +5,7 @@
 #include <vector>
 #include <fstream>
 #include <unistd.h>
+#include <emmintrin.h>
 
 #include "libs/ssw.h"
 #include "libs/ssw_cpp.h"
@@ -171,6 +172,33 @@ struct suffix_prefix_aln_t {
     suffix_prefix_aln_t(int overlap, int score, int mismatches) : overlap(overlap), score(score), mismatches(mismatches) {}
 };
 
+int popcnt(uint32_t x) {
+	// return __builtin_popcount(x);
+
+    // count number of 1 bits in x
+    x = x - ((x >> 1) & 0x55555555);
+    x = (x & 0x33333333) + ((x >> 2) & 0x33333333);
+    return (((x + (x >> 4)) & 0x0F0F0F0F) * 0x01010101) >> 24;
+}
+
+int number_of_mismatches_SIMD(const char* s1, const char* s2, int len) {
+    // count number of mismatches between the first len characters of s1 and s2 using SIMD instructions
+    int n_mismatches = 0;
+    __m128i* s1_128 = (__m128i*) s1;
+    __m128i* s2_128 = (__m128i*) s2;
+    int n_128 = len/16;
+    for (int i = 0; i < n_128; i++) {
+        __m128i cmp = _mm_cmpeq_epi8(_mm_loadu_si128(s1_128), _mm_loadu_si128(s2_128));
+        n_mismatches += 16-popcnt(_mm_movemask_epi8(cmp));
+        s1_128++;
+        s2_128++;
+    }
+    for (int i = n_128*16; i < len; i++) {
+        if (s1[i] != s2[i]) n_mismatches++;
+    }
+    return n_mismatches;
+}
+
 // Finds the best alignment between a suffix of s1 and a prefix of s2
 // Disallows gaps
 suffix_prefix_aln_t aln_suffix_prefix(std::string& s1, std::string& s2, int match_score, int mismatch_score, double max_seq_error,
@@ -184,9 +212,10 @@ suffix_prefix_aln_t aln_suffix_prefix(std::string& s1, std::string& s2, int matc
         int sp_len = s1.length()-i;
         if (best_score >= sp_len*match_score) break; // current best score is unbeatable
 
-        int mismatches = 0;
         const char* s1_suffix = s1.data()+i;
         const char* s2_prefix = s2.data();
+        int mismatches = 0;
+//        mismatches = number_of_mismatches_SIMD(s1.data()+i, s2.data(), sp_len);
         while (*s1_suffix) {
             if (*s1_suffix != *s2_prefix) mismatches++;
             s1_suffix++; s2_prefix++;
@@ -354,6 +383,11 @@ std::vector<int> ssw_cigar_to_prefix_ref_scores(uint32_t* cigar, int cigar_len,
 	return scores;
 }
 
+void to_uppercase(char* s) {
+    for (int i = 0; s[i] != '\0'; i++) {
+        s[i] = toupper(s[i]);
+    }
+}
 
 
 #endif //SMALLINSFINDER_UTILS_H

@@ -523,6 +523,7 @@ std::string generate_consensus_sequences(std::string contig_name, reads_cluster_
 	char* left_flanking = new char[r_cluster->end()-r_cluster->start()+2];
 	strncpy(left_flanking, contigs.get_seq(contig_name)+r_cluster->start(), r_cluster->end()-r_cluster->start()+1);
 	left_flanking[r_cluster->end()-r_cluster->start()+1] = '\0';
+	to_uppercase(left_flanking);
 
 	int ins_seq_start = best_region.start + best_region.score.remap_start,
 		ins_seq_len = best_region.score.remap_end - best_region.score.remap_start + 1;
@@ -530,10 +531,12 @@ std::string generate_consensus_sequences(std::string contig_name, reads_cluster_
 	strncpy(pred_ins_seq, contigs.get_seq(contig_map.get_name(best_region.contig_id))+ins_seq_start, ins_seq_len);
 	pred_ins_seq[ins_seq_len] = '\0';
 	if (is_rc) rc(pred_ins_seq);
+	to_uppercase(pred_ins_seq);
 
 	char* right_flanking = new char[l_cluster->end()-l_cluster->start()+2];
 	strncpy(right_flanking, contigs.get_seq(contig_name)+l_cluster->start(), l_cluster->end()-l_cluster->start()+1);
 	right_flanking[l_cluster->end()-l_cluster->start()+1] = '\0';
+	to_uppercase(right_flanking);
 
 	// NOTE: prefixes and suffixes may be duplicated - i.e., suffix of left flanking also appearing as prefix of predicted ins seq
 	// This is a problem because it predicts an insertion where there is none. One such case is fragment LINE insertions.
@@ -541,6 +544,7 @@ std::string generate_consensus_sequences(std::string contig_name, reads_cluster_
 	// (which is not an insertion as the length of alt allele is not changed)
 	// However, because of the duplicated suffix/prefix, a small insertion is predicted
 	std::string left_flanking_str = left_flanking, pred_ins_seq_str = pred_ins_seq, right_flanking_str = right_flanking;
+
 	suffix_prefix_aln_t spa12 = aln_suffix_prefix(left_flanking_str, pred_ins_seq_str, 1, -4, 1.0, config.min_clip_len);
 	int overlap12 = spa12.overlap;
 	if (!overlap12) {
