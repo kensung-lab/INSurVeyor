@@ -26,4 +26,4 @@ RUN pip install pysam pyfaidx numpy
 
 COPY random_pos_generator.py surveyor.py ./
 
-ENTRYPOINT [ "/usr/bin/python", "/home/surveyor.py" ]
+ENTRYPOINT [ "/usr/bin/python", "/home/insurveyor.py" ]

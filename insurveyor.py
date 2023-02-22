@@ -10,7 +10,7 @@ MAX_READS = 1000
 GEN_DIST_SIZE = 100000
 MAX_ACCEPTABLE_IS = 20000
 
-VERSION = "1.0.2"
+VERSION = "1.1"
 
 cmd_parser = argparse.ArgumentParser(description='INSurVeyor, an insertion caller [%s].' % VERSION)
 cmd_parser.add_argument('bam_file', help='Input bam file.')
