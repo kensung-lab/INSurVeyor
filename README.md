@@ -63,7 +63,7 @@ will print the help message of the software.
 
 If you compiled the code, you can use 
 ```
-python surveyor.py --threads N_THREADS BAM_FILE WORKDIR REFERENCE_FASTA
+python insurveyor.py --threads N_THREADS BAM_FILE WORKDIR REFERENCE_FASTA
 ```
 
 ## Output
@@ -82,7 +82,7 @@ For long insertions (in theory longer than twice the maximum valid insert size, 
 A demo is provided in the folder *demo*. You can run it with the command
 ```
 mkdir workdir
-python surveyor.py demo/reads.bam workdir/ demo/ref.fa
+python insurveyor.py demo/reads.bam workdir/ demo/ref.fa
 ```
 The demo should run in less than a minute. If it ran successfully, a file workdir/out.pass.vcf.gz will be generated. It should contain two insertions and they should look like these:
 ```
