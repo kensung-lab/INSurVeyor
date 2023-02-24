@@ -10,7 +10,7 @@ MAX_READS = 1000
 GEN_DIST_SIZE = 100000
 MAX_ACCEPTABLE_IS = 20000
 
-VERSION = "1.1"
+VERSION = "1.1.1"
 
 cmd_parser = argparse.ArgumentParser(description='INSurVeyor, an insertion caller [%s].' % VERSION)
 cmd_parser.add_argument('bam_file', help='Input bam file.')
@@ -184,3 +184,5 @@ print("Filtering info added in %d [s]" % (end-start))
 filter_cmd = SURV_PATH + "/filter %s %s 0.25" % (cmd_args.workdir, cmd_args.reference)
 print("Executing:", filter_cmd)
 os.system(filter_cmd)
+
+
