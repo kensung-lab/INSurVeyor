@@ -583,9 +583,20 @@ std::pair<StripedSmithWaterman::Alignment, StripedSmithWaterman::Alignment> rema
 		overlap_end = std::min(lh_aln.ref_end, rh_ref_end);
 	if (good_left_anchor && good_right_anchor) {
 		if (overlap_end >= overlap_begin && rh_ref_end-lh_ref_begin >= 2*config.min_clip_len) { // alignments overlap, resolve that
-			std::vector<int> lh_prefix_scores = ssw_cigar_to_prefix_ref_scores(lh_aln.cigar.data()+1, lh_aln.cigar.size()-1);
+			std::vector<uint32_t> lh_cigar = lh_aln.cigar;
+			// we want to ignore the first config.clip_penalty Xs, since they are due to the padding we added
+			// however, in some cases, there are more than config.clip_penalty Xs in the first cigar op, so we need to split it
+			if (cigar_int_to_op(lh_cigar[0]) == 'X' && cigar_int_to_len(lh_cigar[0]) > config.clip_penalty) {
+				lh_cigar[0] = to_cigar_int(cigar_int_to_len(lh_cigar[0])-config.clip_penalty, 'X');
+				lh_cigar.insert(lh_cigar.begin(), to_cigar_int(config.clip_penalty, 'X'));
+			}
+			std::vector<int> lh_prefix_scores = ssw_cigar_to_prefix_ref_scores(lh_cigar.data()+1, lh_cigar.size()-1);
 			std::vector<uint32_t> rev_rh_cigar(rh_aln.cigar.rbegin(), rh_aln.cigar.rend());
-			std::vector<int> rh_suffix_scores = ssw_cigar_to_prefix_ref_scores(rev_rh_cigar.data()+1, rh_aln.cigar.size()-1);
+			if (cigar_int_to_op(rev_rh_cigar[0]) == 'X' && cigar_int_to_len(rev_rh_cigar[0]) > config.clip_penalty) {
+				rev_rh_cigar[0] = to_cigar_int(cigar_int_to_len(rev_rh_cigar[0])-config.clip_penalty, 'X');
+				rev_rh_cigar.insert(rev_rh_cigar.begin(), to_cigar_int(config.clip_penalty, 'X'));
+			}
+			std::vector<int> rh_suffix_scores = ssw_cigar_to_prefix_ref_scores(rev_rh_cigar.data()+1, rev_rh_cigar.size()-1);
 
 			int best_i = overlap_begin, best_score = INT32_MIN;
 			for (int i = overlap_begin; i <= overlap_end; i++) {
