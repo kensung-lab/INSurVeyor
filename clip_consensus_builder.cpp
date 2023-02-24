@@ -215,10 +215,10 @@ void build_consensuses(int id, int contig_id, std::string contig_name) {
     // divide soft-clipped reads into left-clipped and right-clipped
     std::vector<bam_redux_t*> lc_reads, rc_reads;
     while (sam_itr_next(bam_file->file, iter, read) >= 0) {
-        if (is_left_clipped(read, config.min_clip_len)) {
+        if (is_left_clipped(read, config.min_clip_len) && !is_right_clipped(read, config.min_clip_len)) {
             lc_reads.push_back(new bam_redux_t(read));
         }
-        if (is_right_clipped(read, config.min_clip_len)) {
+        if (is_right_clipped(read, config.min_clip_len) && !is_left_clipped(read, config.min_clip_len)) {
             rc_reads.push_back(new bam_redux_t(read));
         }
     }

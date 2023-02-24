@@ -172,6 +172,7 @@ struct suffix_prefix_aln_t {
     suffix_prefix_aln_t(int overlap, int score, int mismatches) : overlap(overlap), score(score), mismatches(mismatches) {}
 };
 
+
 int popcnt(uint32_t x) {
 	// return __builtin_popcount(x);
 
@@ -350,6 +351,12 @@ int get_left_clip_size(const StripedSmithWaterman::Alignment& aln) {
 int get_right_clip_size(const StripedSmithWaterman::Alignment& aln) {
     uint32_t r = aln.cigar[aln.cigar.size()-1];
     return cigar_int_to_op(r) == 'S' ? cigar_int_to_len(r) : 0;
+}
+bool is_left_clipped(const StripedSmithWaterman::Alignment& aln) {
+	return get_left_clip_size(aln) > 0;
+}
+bool is_right_clipped(const StripedSmithWaterman::Alignment& aln) {
+    return get_right_clip_size(aln) > 0;
 }
 
 // Returns a vector scores s.t. scores[N] contains the score of the alignment between reference[aln.ref_begin:aln.ref_begin+N]

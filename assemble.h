@@ -859,8 +859,8 @@ insertion_t* assemble_insertion(std::string& contig_name, chr_seqs_map_t& contig
 		harsh_aligner.Align(padded_seq.c_str(), full_assembled_seq.c_str(), full_assembled_seq.length(), filter, &aln, 0);
 		std::string qual_ascii = get_qual_ascii(read, true);
 		qual_ascii = std::string(qual_ascii.rbegin(), qual_ascii.rend());
-		int aln_ref_begin = aln.ref_begin + (cigar_int_to_op(aln.cigar[0]) == 'S' ? 0 : config.clip_penalty);
-		int aln_ref_end = aln.ref_end - (cigar_int_to_op(aln.cigar[aln.cigar.size()]) == 'S' ? 0 : config.clip_penalty);
+		int aln_ref_begin = aln.ref_begin + (is_left_clipped(aln) ? 0 : config.clip_penalty);
+		int aln_ref_end = aln.ref_end - (is_right_clipped(aln) ? 0 : config.clip_penalty);
 		if (overlap(ins_seq_start, ins_seq_end, aln_ref_begin, aln_ref_end) >= config.min_clip_len
 				&& accept(aln, config.max_seq_error, qual_ascii, stats.get_min_avg_base_qual())) {
 			ins->r_disc_pairs++;
@@ -872,8 +872,8 @@ insertion_t* assemble_insertion(std::string& contig_name, chr_seqs_map_t& contig
 		std::string padded_seq = std::string(config.clip_penalty, 'N') + get_sequence(read, true) + std::string(config.clip_penalty, 'N');
 		harsh_aligner.Align(padded_seq.c_str(), full_assembled_seq.c_str(), full_assembled_seq.length(), filter, &aln, 0);
 		std::string qual_ascii = get_qual_ascii(read, true);
-		int aln_ref_begin = aln.ref_begin + (cigar_int_to_op(aln.cigar[0]) == 'S' ? 0 : config.clip_penalty);
-		int aln_ref_end = aln.ref_end - (cigar_int_to_op(aln.cigar[aln.cigar.size()]) == 'S' ? 0 : config.clip_penalty);
+		int aln_ref_begin = aln.ref_begin + (is_left_clipped(aln) ? 0 : config.clip_penalty);
+		int aln_ref_end = aln.ref_end - (is_right_clipped(aln) ? 0 : config.clip_penalty);
 		if (overlap(ins_seq_start, ins_seq_end, aln_ref_begin, aln_ref_end) >= config.min_clip_len
 				&& accept(aln, config.max_seq_error, qual_ascii, stats.get_min_avg_base_qual())) {
 			ins->l_disc_pairs++;

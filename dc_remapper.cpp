@@ -86,20 +86,13 @@ bool operator < (const cc_v_distance_t& ccd1, const cc_v_distance_t& ccd2) { // 
     return ccd1.distance < ccd2.distance;
 }
 
-struct interval_t {
-    int start, end;
-
-    interval_t() {}
-    interval_t(int start, int end) : start(start), end(end) {}
-};
-
 struct remap_info_t {
     int start, end;
     int score;
     std::string cigar;
     bool accepted, left_clipped, right_clipped;
 
-    remap_info_t() : start(0), end(0), score(0), cigar(""), accepted(false) {}
+    remap_info_t() : start(0), end(0), score(0), cigar(""), accepted(false), left_clipped(false), right_clipped(false) {}
 
     remap_info_t(StripedSmithWaterman::Alignment& aln, bool accepted) : start(aln.ref_begin), end(aln.ref_end),
     score(aln.sw_score), cigar(aln.cigar_string), accepted(accepted) {
@@ -306,7 +299,6 @@ region_score_t compute_score_supp(region_t& region, reads_cluster_t* r_cluster, 
         l_mates.push_back(s);
     }
 
-    int contig_len = contigs.get_len(contig_map.get_name(region.contig_id));
     char* region_ptr = contigs.get_seq(contig_map.get_name(region.contig_id)) + region.start;
     int strict_region_start = 0, strict_region_end = region.end - region.start;
 
@@ -737,64 +729,67 @@ void remap_cluster(reads_cluster_t* r_cluster, reads_cluster_t* l_cluster, std::
     // build corrected consensus sequence and realign reads to it
     std::string consensus_log;
     std::string corrected_consensus_sequence;
+	std::vector<std::pair<int,int>> covered_segments;
     bool left_bp_precise = false, right_bp_precise = false;
+	std::stringstream ss;
     if (!refined_r_cluster->empty() && !refined_l_cluster->empty()) {
 		corrected_consensus_sequence = generate_consensus_sequences(contig_name, refined_r_cluster, refined_l_cluster,
 				best_region, is_rc, left_bp_precise, right_bp_precise, mateseqs, aligner_to_base, harsh_aligner, consensus_log);
+		ss << corrected_consensus_sequence << std::endl;
     }
 
-	std::stringstream ss;
-	ss << corrected_consensus_sequence << std::endl;
-	StripedSmithWaterman::Alignment aln;
-	std::vector<std::pair<int,int>> covered_segments;
-	for (int i = 0; i < r_cluster->reads.size(); i++) {
-    	std::string mate_seq = get_mate_seq(r_cluster->reads[i], mateseqs);
-    	std::string mate_qual = get_mate_qual(r_cluster->reads[i], matequals);
-		rc(mate_seq);
-		mate_qual = std::string(mate_qual.rbegin(), mate_qual.rend());
-		std::string padded_mate_seq = std::string(config.clip_penalty, 'N') + mate_seq + std::string(config.clip_penalty, 'N');
-		harsh_aligner.Align(padded_mate_seq.c_str(), corrected_consensus_sequence.c_str(), corrected_consensus_sequence.length(), filter, &aln, 0);
-		std::string log;
-		rc_remap_infos[i].accepted = accept(aln, log, config.max_seq_error, mate_qual, stats.get_min_avg_base_qual());
-		if (rc_remap_infos[i].accepted) {
-			covered_segments.push_back({aln.ref_begin, aln.ref_end});
+    if (!corrected_consensus_sequence.empty()) {
+		StripedSmithWaterman::Alignment aln;
+		for (int i = 0; i < r_cluster->reads.size(); i++) {
+			std::string mate_seq = get_mate_seq(r_cluster->reads[i], mateseqs);
+			std::string mate_qual = get_mate_qual(r_cluster->reads[i], matequals);
+			rc(mate_seq);
+			mate_qual = std::string(mate_qual.rbegin(), mate_qual.rend());
+			std::string padded_mate_seq = std::string(config.clip_penalty, 'N') + mate_seq + std::string(config.clip_penalty, 'N');
+			harsh_aligner.Align(padded_mate_seq.c_str(), corrected_consensus_sequence.c_str(), corrected_consensus_sequence.length(), filter, &aln, 0);
+			std::string log;
+			rc_remap_infos[i].accepted = accept(aln, log, config.max_seq_error, mate_qual, stats.get_min_avg_base_qual());
+			if (rc_remap_infos[i].accepted) {
+				covered_segments.push_back({aln.ref_begin, aln.ref_end});
+			}
+			ss << bam_get_qname(r_cluster->reads[i]) << " R " << mate_seq << " " << aln.cigar_string << " " << rc_remap_infos[i].accepted << std::endl;
+			ss << log << std::endl;
 		}
-		ss << bam_get_qname(r_cluster->reads[i]) << " R " << mate_seq << " " << aln.cigar_string << " " << rc_remap_infos[i].accepted << std::endl;
-		ss << log << std::endl;
+		for (int i = 0; i < l_cluster->reads.size(); i++) {
+			std::string mate_seq = get_mate_seq(l_cluster->reads[i], mateseqs);
+			std::string mate_qual = get_mate_qual(l_cluster->reads[i], matequals);
+			std::string padded_mate_seq = std::string(config.clip_penalty, 'N') + mate_seq + std::string(config.clip_penalty, 'N');
+			harsh_aligner.Align(padded_mate_seq.c_str(), corrected_consensus_sequence.c_str(), corrected_consensus_sequence.length(), filter, &aln, 0);
+			std::string log;
+			lc_remap_infos[i].accepted = accept(aln, log, config.max_seq_error, mate_qual, stats.get_min_avg_base_qual());
+			if (lc_remap_infos[i].accepted) {
+				covered_segments.push_back({aln.ref_begin, aln.ref_end});
+			}
+			ss << bam_get_qname(l_cluster->reads[i]) << " L " << mate_seq << " " << aln.cigar_string << " " << lc_remap_infos[i].accepted << std::endl;
+			ss << log << std::endl;
+		}
+		if (r_cluster->clip_cluster) {
+			std::string padded_clip_seq = std::string(config.clip_penalty, 'N') + r_cluster->clip_cluster->full_seq + std::string(config.clip_penalty, 'N');
+			harsh_aligner.Align(padded_clip_seq.c_str(), corrected_consensus_sequence.c_str(), corrected_consensus_sequence.length(), filter, &aln, 0);
+			std::string log;
+			rc_remap_infos.rbegin()->accepted = accept(aln, log, config.max_seq_error);
+			if (rc_remap_infos.rbegin()->accepted) {
+				covered_segments.push_back({aln.ref_begin, aln.ref_end});
+			}
+			ss << "R_CLIP " << r_cluster->clip_cluster->full_seq << " " << aln.cigar_string << " " << rc_remap_infos.rbegin()->accepted << std::endl;
+		}
+		if (l_cluster->clip_cluster) {
+			std::string padded_clip_seq = std::string(config.clip_penalty, 'N') + l_cluster->clip_cluster->full_seq + std::string(config.clip_penalty, 'N');
+			harsh_aligner.Align(padded_clip_seq.c_str(), corrected_consensus_sequence.c_str(), corrected_consensus_sequence.length(), filter, &aln, 0);
+			std::string log;
+			lc_remap_infos.rbegin()->accepted = accept(aln, log, config.max_seq_error);
+			if (lc_remap_infos.rbegin()->accepted) {
+				covered_segments.push_back({aln.ref_begin, aln.ref_end});
+			}
+			ss << "L_CLIP " << l_cluster->clip_cluster->full_seq << " " << aln.cigar_string << " " << lc_remap_infos.rbegin()->accepted << std::endl;
+		}
     }
-	for (int i = 0; i < l_cluster->reads.size(); i++) {
-    	std::string mate_seq = get_mate_seq(l_cluster->reads[i], mateseqs);
-    	std::string mate_qual = get_mate_qual(l_cluster->reads[i], matequals);
-    	std::string padded_mate_seq = std::string(config.clip_penalty, 'N') + mate_seq + std::string(config.clip_penalty, 'N');
-		harsh_aligner.Align(padded_mate_seq.c_str(), corrected_consensus_sequence.c_str(), corrected_consensus_sequence.length(), filter, &aln, 0);
-		std::string log;
-		lc_remap_infos[i].accepted = accept(aln, log, config.max_seq_error, mate_qual, stats.get_min_avg_base_qual());
-		if (lc_remap_infos[i].accepted) {
-			covered_segments.push_back({aln.ref_begin, aln.ref_end});
-		}
-		ss << bam_get_qname(l_cluster->reads[i]) << " L " << mate_seq << " " << aln.cigar_string << " " << lc_remap_infos[i].accepted << std::endl;
-		ss << log << std::endl;
-    }
-	if (r_cluster->clip_cluster) {
-		std::string padded_clip_seq = std::string(config.clip_penalty, 'N') + r_cluster->clip_cluster->full_seq + std::string(config.clip_penalty, 'N');
-		harsh_aligner.Align(padded_clip_seq.c_str(), corrected_consensus_sequence.c_str(), corrected_consensus_sequence.length(), filter, &aln, 0);
-		std::string log;
-		rc_remap_infos.rbegin()->accepted = accept(aln, log, config.max_seq_error);
-		if (rc_remap_infos.rbegin()->accepted) {
-			covered_segments.push_back({aln.ref_begin, aln.ref_end});
-		}
-		ss << "R_CLIP " << r_cluster->clip_cluster->full_seq << " " << aln.cigar_string << " " << rc_remap_infos.rbegin()->accepted << std::endl;
-	}
-	if (l_cluster->clip_cluster) {
-		std::string padded_clip_seq = std::string(config.clip_penalty, 'N') + l_cluster->clip_cluster->full_seq + std::string(config.clip_penalty, 'N');
-		harsh_aligner.Align(padded_clip_seq.c_str(), corrected_consensus_sequence.c_str(), corrected_consensus_sequence.length(), filter, &aln, 0);
-		std::string log;
-		lc_remap_infos.rbegin()->accepted = accept(aln, log, config.max_seq_error);
-		if (lc_remap_infos.rbegin()->accepted) {
-			covered_segments.push_back({aln.ref_begin, aln.ref_end});
-		}
-		ss << "L_CLIP " << l_cluster->clip_cluster->full_seq << " " << aln.cigar_string << " " << lc_remap_infos.rbegin()->accepted << std::endl;
-	}
+
 
     /* == Try assembly == */
 	int rc_accepted_reads = 0, lc_accepted_reads = 0;
@@ -882,8 +877,6 @@ void remap_cluster(reads_cluster_t* r_cluster, reads_cluster_t* l_cluster, std::
 					i--;
 				}
 
-				int rc_reads = pos_cluster->clip_cluster ? pos_cluster->clip_cluster->c->a1.sc_reads() : 0;
-				int lc_reads = neg_cluster->clip_cluster ? neg_cluster->clip_cluster->c->a1.sc_reads() : 0;
 				int rc_fwd_reads = 0, rc_rev_reads = 0, lc_fwd_reads = 0, lc_rev_reads = 0;
 				if (pos_cluster->clip_cluster) {
 					rc_fwd_reads = pos_cluster->clip_cluster->c->a1.fwd_sc_reads;
@@ -1216,7 +1209,6 @@ void remap(int id, int contig_id) {
     	}
     }
 
-
 	std::vector<reads_cluster_t*> r_clusters = cluster_reads(r_dc_file, contig_id, mateseqs, matequals, r_clip_clusters);
 	std::vector<reads_cluster_t*> l_clusters = cluster_reads(l_dc_file, contig_id, mateseqs, matequals, l_clip_clusters);
 
@@ -1260,9 +1252,6 @@ void remap(int id, int contig_id) {
         reads_cluster_t* c1 = cc_v_distance.c1;
         reads_cluster_t* c2 = cc_v_distance.c2;
         if (c1->used || c2->used) continue;
-
-        int r_pos = c1->end();
-        int l_pos = c2->start();
 
         // remap clusters
         std::vector<bam1_t*> to_write;
