@@ -1,6 +1,8 @@
 # INSurVeyor
 An insertion caller for Illumina paired-end WGS data.
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.7695070.svg)](https://doi.org/10.5281/zenodo.7695070)
+
 ## Installation
 
 There are two options for obtaining INSurVeyor. If singularity is available on your system, you can download the image in Releases. Alternatively, you can compile the code yourself. This should be 
