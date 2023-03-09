@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <vector>
 #include <fstream>
+#include <sstream>
 #include <unistd.h>
 #include <emmintrin.h>
 
@@ -396,5 +397,12 @@ void to_uppercase(char* s) {
     }
 }
 
+std::string cigar_to_string(std::vector<uint32_t>& cigar) {
+	std::stringstream ss;
+	for (uint32_t c : cigar) {
+		ss << cigar_int_to_len(c) << cigar_int_to_op(c);
+	}
+	return ss.str();
+}
 
 #endif //SMALLINSFINDER_UTILS_H

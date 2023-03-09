@@ -27,7 +27,7 @@ add_executable(call_insertions libs/ssw.c libs/ssw_cpp.cpp call_insertions.cpp)
 
 add_executable(dc_remapper libs/ssw.c libs/ssw_cpp.cpp dc_remapper.cpp)
 
-add_executable(add_filtering_info libs/ssw.c libs/ssw_cpp.cpp add_filtering_info.cpp)
+add_executable(add_filtering_info add_filtering_info.cpp)
 
 add_executable(filter filter.cpp)
 

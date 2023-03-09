@@ -900,8 +900,24 @@ void remap_cluster(reads_cluster_t* r_cluster, reads_cluster_t* l_cluster, std::
 					insertion->lc_avg_nm += bam_aux2i(bam_aux_get(read, "NM"));
 				}
 				insertion->lc_avg_nm /= neg_cluster->reads.size();
-				insertion->left_anchor_cigar = p.first.cigar_string; //TODO: remove the N padding (i.e., first and last 7X)
-				insertion->right_anchor_cigar = p.second.cigar_string;
+
+				// remove the Xs caused by the padding
+				std::vector<uint32_t> cigar = p.first.cigar;
+				if (cigar_int_to_op(cigar[0]) == 'X' && cigar_int_to_len(cigar[0]) > config.clip_penalty) {
+					cigar[0] = to_cigar_int(cigar_int_to_len(cigar[0])-config.clip_penalty, 'X');
+				} else {
+					cigar.erase(cigar.begin());
+				}
+				insertion->left_anchor_cigar = cigar_to_string(cigar);
+
+				cigar = p.second.cigar;
+				int le = cigar.size()-1;
+				if (cigar_int_to_op(cigar[le]) == 'X' && cigar_int_to_len(cigar[le]) > config.clip_penalty) {
+					cigar[le] = to_cigar_int(cigar_int_to_len(cigar[le])-config.clip_penalty, 'X');
+				} else {
+					cigar.pop_back();
+				}
+				insertion->right_anchor_cigar = cigar_to_string(cigar);
 
 				insertion->left_seq_cov = std::min(left_seq_cov - ins_seq_start, (int) ins_seq.length());
 				insertion->right_seq_cov = std::min(ins_seq_end - right_seq_cov, (int) ins_seq.length());
