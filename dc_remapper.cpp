@@ -903,8 +903,8 @@ void remap_cluster(reads_cluster_t* r_cluster, reads_cluster_t* l_cluster, std::
 				insertion->left_anchor_cigar = p.first.cigar_string; //TODO: remove the N padding (i.e., first and last 7X)
 				insertion->right_anchor_cigar = p.second.cigar_string;
 
-				insertion->left_seq_cov = left_seq_cov - ins_seq_start;
-				insertion->right_seq_cov = ins_seq_end - right_seq_cov;
+				insertion->left_seq_cov = std::min(left_seq_cov - ins_seq_start, (int) ins_seq.length());
+				insertion->right_seq_cov = std::min(ins_seq_end - right_seq_cov, (int) ins_seq.length());
 				mtx.lock();
 				trans_insertions.push_back(insertion);
 				mtx.unlock();
