@@ -13,6 +13,12 @@ if (NOT HTS_LIB)
 	find_library(HTS_LIB hts)
 endif()
 
+# add option for -march=native
+option(USE_NATIVE_ARCH "Use -march=native" OFF)
+if (USE_NATIVE_ARCH)
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
+endif()
+
 add_executable(reads_categorizer reads_categorizer.cpp)
 
 add_executable(clip_consensus_builder clip_consensus_builder.cpp)
@@ -21,7 +27,7 @@ add_executable(call_insertions libs/ssw.c libs/ssw_cpp.cpp call_insertions.cpp)
 
 add_executable(dc_remapper libs/ssw.c libs/ssw_cpp.cpp dc_remapper.cpp)
 
-add_executable(add_filtering_info add_filtering_info.cpp)
+add_executable(add_filtering_info libs/ssw.c libs/ssw_cpp.cpp add_filtering_info.cpp)
 
 add_executable(filter filter.cpp)
 
