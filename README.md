@@ -5,8 +5,16 @@ An insertion caller for Illumina paired-end WGS data.
 
 ## Installation
 
-There are two options for obtaining INSurVeyor. If singularity is available on your system, you can download the image in Releases. Alternatively, you can compile the code yourself. This should be 
-straightforward, but some dependencies must be installed.
+There are three options for obtaining INSurVeyor: conda, singularity and compiling the source code.
+
+### conda
+
+To avoid conflicts with other packages, it is recommended to install insurveyor in a dedicated environment:
+```
+conda create -n insurveyor-env insurveyor
+conda activate insurveyor-env
+insurveyor.py --version
+```
 
 ### Singularity
 
@@ -66,6 +74,11 @@ will print the help message of the software.
 If you compiled the code, you can use 
 ```
 python insurveyor.py --threads N_THREADS BAM_FILE WORKDIR REFERENCE_FASTA
+```
+
+If you installed INSurVeyor using conda, the command is
+```
+insurveyor.py --threads N_THREADS BAM_FILE WORKDIR REFERENCE_FASTA
 ```
 
 ## Output
