@@ -543,7 +543,14 @@ std::pair<StripedSmithWaterman::Alignment, StripedSmithWaterman::Alignment> rema
 	StripedSmithWaterman::Filter filter;
 	auto is_fully_aln = [](const StripedSmithWaterman::Alignment& aln, size_t seq_len) {
 		if (aln.query_begin >= config.min_clip_len || aln.query_end <= seq_len-1-config.min_clip_len) return false;
-		for (uint32_t c : aln.cigar) if (cigar_int_to_op(c) == 'I' && cigar_int_to_len(c) >= config.min_insertion_size) return false;
+		int tot_ins_sum = 0;
+		for (uint32_t c : aln.cigar) {
+			if (cigar_int_to_op(c) == 'I') {
+				if (cigar_int_to_len(c) >= config.min_insertion_size) return false;
+				tot_ins_sum += cigar_int_to_len(c);
+			}
+		}
+		if (tot_ins_sum >= config.min_insertion_size) return false;
 		return true;
 	};
 
