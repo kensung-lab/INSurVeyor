@@ -132,5 +132,4 @@ Other alternatives include https://github.com/DecodeGenetics/svimmer and https:/
 
 ## Citation
 
-A manuscript on INSurVeyor is currently in preparation.
-
+Rajaby, R., Liu, DX., Au, C.H. et al. INSurVeyor: improving insertion calling from short read sequencing data. Nat Commun 14, 3243 (2023). https://doi.org/10.1038/s41467-023-38870-2
