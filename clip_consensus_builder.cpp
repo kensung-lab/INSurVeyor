@@ -199,7 +199,7 @@ consensus_t* build_full_consensus(int contig_id, std::vector<bam_redux_t*>& clip
     return consensus;
 }
 
-void build_consensuses(int id, int contig_id, std::string contig_name) {
+void build_consensuses(int id, int contig_id, std::string contig_name, hts_pos_t contig_len) {
 
     std::string clip_fname = workspace + "/clipped/" + std::to_string(contig_id) + ".bam";
     if (!file_exists(clip_fname)) return;
@@ -216,10 +216,20 @@ void build_consensuses(int id, int contig_id, std::string contig_name) {
     std::vector<bam_redux_t*> lc_reads, rc_reads;
     while (sam_itr_next(bam_file->file, iter, read) >= 0) {
         if (is_left_clipped(read, config.min_clip_len) && !is_right_clipped(read, config.min_clip_len)) {
-            lc_reads.push_back(new bam_redux_t(read));
+        	bam_redux_t* bam_redux = new bam_redux_t(read);
+        	if (bam_redux->unclipped_end() < contig_len) {
+				lc_reads.push_back(bam_redux);
+        	} else {
+        		delete bam_redux;
+        	}
         }
         if (is_right_clipped(read, config.min_clip_len) && !is_left_clipped(read, config.min_clip_len)) {
-            rc_reads.push_back(new bam_redux_t(read));
+        	bam_redux_t* bam_redux = new bam_redux_t(read);
+        	if (bam_redux->unclipped_start() >= 0) {
+				rc_reads.push_back(bam_redux);
+        	} else {
+        		delete bam_redux;
+        	}
         }
     }
 
@@ -289,15 +299,21 @@ int main(int argc, char* argv[]) {
     workdir = argv[1];
     workspace = workdir + "/workspace";
 
+    std::string reference_fname = argv[2];
+
     contig_map_t contig_map;
     contig_map.parse(workdir);
     config.parse(workdir + "/config.txt");
+
+    chr_seqs_map_t contigs;
+    contigs.read_fasta_into_map(reference_fname);
 
     ctpl::thread_pool thread_pool(config.threads);
     std::vector<std::future<void> > futures;
     for (size_t contig_id = 0; contig_id < contig_map.size(); contig_id++) {
         std::string contig_name = contig_map.get_name(contig_id);
-        std::future<void> future = thread_pool.push(build_consensuses, contig_id, contig_name);
+        hts_pos_t contig_len = contigs.get_len(contig_name);
+        std::future<void> future = thread_pool.push(build_consensuses, contig_id, contig_name, contig_len);
         futures.push_back(std::move(future));
     }
     thread_pool.stop(true);

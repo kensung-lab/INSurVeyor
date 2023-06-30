@@ -149,7 +149,7 @@ end = time.time()
 print("Reads categorized in %d [s]" % (end-start))
 
 start = time.time()
-clip_consensus_builder_cmd = SURV_PATH + "/clip_consensus_builder %s" % (cmd_args.workdir)
+clip_consensus_builder_cmd = SURV_PATH + "/clip_consensus_builder %s %s" % (cmd_args.workdir, cmd_args.reference)
 print("Executing:", clip_consensus_builder_cmd)
 os.system(clip_consensus_builder_cmd)
 end = time.time()
