@@ -11,7 +11,7 @@ There are three options for obtaining INSurVeyor: conda, singularity and compili
 
 To avoid conflicts with other packages, it is recommended to install insurveyor in a dedicated environment:
 ```
-conda create -n insurveyor-env -c bioconda insurveyor
+conda create -n insurveyor-env -c bioconda -c conda-forge insurveyor 
 conda activate insurveyor-env
 insurveyor.py --version
 ```
