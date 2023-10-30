@@ -38,6 +38,7 @@ cmd_parser.add_argument('--samplename', default='', help='Name of the sample to 
 cmd_parser.add_argument('--sample-clipped-pairs', action='store_true', help='When estimating the insert size distribution '
                                                                             'by sampling pairs, do not discard pairs where '
                                                                             'one or both of the reads are clipped.')
+cmd_parser.add_argument('--use-csi', action='store_true', help='Use CSI indices instead of BAI for intermediate bam files.')
 cmd_parser.add_argument('--version', action='version', version="INSurVeyor v%s" % VERSION, help='Print version number.')
 cmd_args = cmd_parser.parse_args()
 
@@ -59,6 +60,7 @@ config_file.write("max_seq_error %f\n" % cmd_args.max_seq_error)
 if cmd_args.sampling_regions:
     config_file.write("sampling_regions %s\n" % cmd_args.sampling_regions)
 config_file.write("per_contig_stats %d\n" % cmd_args.per_contig_stats)
+config_file.write("use_csi %d\n" % cmd_args.use_csi)
 config_file.write("version %s\n" % VERSION)
 
 # Find read length

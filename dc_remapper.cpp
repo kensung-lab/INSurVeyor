@@ -1122,7 +1122,7 @@ void add_semi_mapped(std::string clipped_fname, int contig_id, std::vector<reads
 
 	std::vector<bam1_t*> l_semi_mapped_pairs, r_semi_mapped_pairs;
 
-	open_samFile_t* clipped_file = open_samFile(clipped_fname.c_str(), true);
+	open_samFile_t* clipped_file = open_samFile(clipped_fname.c_str(), true, config.use_csi);
 	std::string contig_name = contig_map.get_name(contig_id);
 	hts_itr_t* iter = sam_itr_querys(clipped_file->idx, clipped_file->header, contig_name.c_str());
 	bam1_t* read = bam_init1();
@@ -1198,8 +1198,8 @@ void remap(int id, int contig_id) {
     }
     mateseqs_fin.close();
 
-    open_samFile_t* r_dc_file = open_samFile(r_dc_fname.c_str(), true);
-    open_samFile_t* l_dc_file = open_samFile(l_dc_fname.c_str(), true);
+    open_samFile_t* r_dc_file = open_samFile(r_dc_fname.c_str(), true, config.use_csi);
+    open_samFile_t* l_dc_file = open_samFile(l_dc_fname.c_str(), true, config.use_csi);
 
     std::string clip_consensus_fname = workdir + "/workspace/clip_consensuses/" + std::to_string(contig_id) + ".txt";
     std::ifstream clipped_fin(clip_consensus_fname);

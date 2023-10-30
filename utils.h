@@ -23,6 +23,7 @@ struct config_t {
     int max_clipped_pos_dist, min_clip_len, min_stable_mapq;
     double max_seq_error;
     std::string sampling_regions;
+    bool use_csi;
     std::string version;
 
     int clip_penalty = 7;
@@ -53,7 +54,8 @@ struct config_t {
         max_is = stoi(config_params["max_is"]);
         read_len = stoi(config_params["read_len"]);
 
-        sampling_regions = config_params["sampling_regions"];
+        use_csi = stoi(config_params["use_csi"]);
+        per_contig_stats = stoi(config_params["per_contig_stats"]);
         version = config_params["version"];
     };
 };

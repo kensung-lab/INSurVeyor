@@ -208,7 +208,7 @@ void build_consensuses(int id, int contig_id, std::string contig_name, hts_pos_t
     std::cout << "Building consensuses for " << contig_name << std::endl;
     mtx.unlock();
 
-    open_samFile_t* bam_file = open_samFile(clip_fname, true);
+    open_samFile_t* bam_file = open_samFile(clip_fname, true, config.use_csi);
     hts_itr_t* iter = sam_itr_querys(bam_file->idx, bam_file->header, contig_name.c_str());
     bam1_t* read = bam_init1();
 

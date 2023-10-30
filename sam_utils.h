@@ -256,7 +256,7 @@ struct open_samFile_t {
     open_samFile_t(samFile* file, bam_hdr_t* header, hts_idx_t* idx) : file(file), header(header), idx(idx) {}
 };
 
-open_samFile_t* open_samFile(std::string fname_str, bool index_file = false) {
+open_samFile_t* open_samFile(std::string fname_str, bool index_file = false, bool use_csi = false) {
     const char* fname = fname_str.c_str();
     open_samFile_t* sam_file = new open_samFile_t;
     sam_file->file = sam_open(fname, "r");
@@ -265,7 +265,7 @@ open_samFile_t* open_samFile(std::string fname_str, bool index_file = false) {
     }
 
     if (index_file) {
-        int code = sam_index_build(fname, 0);
+        int code = sam_index_build(fname, use_csi * 14);
         if (code != 0) {
             throw "Cannot index " + std::string(fname);
         }
