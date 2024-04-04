@@ -1287,11 +1287,11 @@ void remap(int id, int contig_id) {
     }
 
     std::string r_dc_remapped_fname = workdir + "/workspace/R/" + std::to_string(contig_id) + ".remap.bam";
-    write_and_index_file(r_reads_to_write, r_dc_remapped_fname, r_dc_file->header);
+    write_and_index_file(r_reads_to_write, r_dc_remapped_fname, r_dc_file->header, config.use_csi);
     for (bam1_t* r : r_reads_to_write) bam_destroy1(r);
 
     std::string l_dc_remapped_fname = workdir + "/workspace/L/" + std::to_string(contig_id) + ".remap.bam";
-    write_and_index_file(l_reads_to_write, l_dc_remapped_fname, l_dc_file->header);
+    write_and_index_file(l_reads_to_write, l_dc_remapped_fname, l_dc_file->header, config.use_csi);
     for (bam1_t* r : l_reads_to_write) bam_destroy1(r);
 
     for (reads_cluster_t* c : r_clusters) c->deallocate_reads();

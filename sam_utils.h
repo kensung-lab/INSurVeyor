@@ -221,7 +221,7 @@ samFile* open_writer(std::string path, bam_hdr_t* header) {
     return remapped_file;
 }
 
-void write_and_index_file(std::vector<bam1_t*>& reads, std::string path, bam_hdr_t* header) {
+void write_and_index_file(std::vector<bam1_t*>& reads, std::string path, bam_hdr_t* header, bool use_csi) {
     samFile* file = open_writer(path, header);
     if (file == NULL) {
         throw "Unable to open " + path;
@@ -238,7 +238,7 @@ void write_and_index_file(std::vector<bam1_t*>& reads, std::string path, bam_hdr
 
     file = sam_open(path.c_str(), "r");
 
-    int code = sam_index_build(path.c_str(), 0);
+    int code = sam_index_build(path.c_str(), use_csi * 14);
     if (code != 0) {
         throw "Cannot index " + path;
     }
