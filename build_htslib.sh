@@ -1,7 +1,5 @@
-tar -xjf htslib-1.16.tar.bz2
-cd htslib-1.16
-autoheader
-autoconf
+tar -xjf htslib-1.19.1.tar.bz2
+cd htslib-1.19.1
 ./configure --prefix=`pwd`
 make
 make install

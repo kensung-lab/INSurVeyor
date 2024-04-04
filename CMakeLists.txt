@@ -6,8 +6,8 @@ set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pthread")
 
 include_directories(libs)
 
-find_library(HTS_LIB hts PATHS htslib-1.16/lib NO_DEFAULT_PATH)
-include_directories(htslib-1.16/include)
+find_library(HTS_LIB hts PATHS htslib-1.19.1/lib NO_DEFAULT_PATH)
+include_directories(htslib-1.19.1/include)
 if (NOT HTS_LIB)
 	message(STATUS "Included htslib was not built. Assuming htslib 1.13 or higher is installed system-wise.")
 	find_library(HTS_LIB hts)
