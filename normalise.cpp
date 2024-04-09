@@ -156,6 +156,4 @@ int main(int argc, char* argv[]) {
 
 	hts_close(in_vcf_file);
 	hts_close(out_vcf_file);
-
-	tbx_index_build(out_vcf_fname.c_str(), 0, &tbx_conf_vcf);
 }

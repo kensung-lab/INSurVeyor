@@ -336,6 +336,6 @@ int main(int argc, char* argv[]) {
 	bcf_close(out_vcf_file);
 	bcf_close(out_pass_vcf_file);
 
-	tbx_index_build(out_vcf_fname.c_str(), 0, &tbx_conf_vcf);
-	tbx_index_build(out_pass_vcf_fname.c_str(), 0, &tbx_conf_vcf);
+	tbx_index_build(out_vcf_fname.c_str(), config.use_csi * 14, &tbx_conf_vcf);
+	tbx_index_build(out_pass_vcf_fname.c_str(), config.use_csi * 14, &tbx_conf_vcf);
 }
