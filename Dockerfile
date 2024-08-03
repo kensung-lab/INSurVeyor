@@ -2,7 +2,7 @@ FROM ubuntu
 
 WORKDIR /home/
 
-COPY htslib-1.16.tar.bz2 .
+COPY htslib-1.20.tar.bz2 .
 COPY build_htslib.sh .
 
 RUN apt-get update 
