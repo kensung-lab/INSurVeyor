@@ -3,6 +3,12 @@ An insertion caller for Illumina paired-end WGS data.
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.7695070.svg)](https://doi.org/10.5281/zenodo.7695070)
 
+Note: we released SurVeyor, a structural variants caller that calls deletions, duplications, insertions and inversions. 
+It performs better than INSurVeyor, and it produces genotyped calls. We recommend using it over INSurVeyor.
+You can find it at
+
+https://github.com/Mesh89/SurVeyor
+
 ## Installation
 
 There are three options for obtaining INSurVeyor: conda, singularity and compiling the source code.
